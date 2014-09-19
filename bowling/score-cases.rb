@@ -1,8 +1,4 @@
-# okay, so -- going to write a score method that works for three hard-coded games:
-# all strikes, all spares, no strikes or spares
-# don't need roll() b/c not generating anything -- just arrays  --> check.
-
-# okay, so -- when you have a uniform array of existing scores, that's easy
+# okay, so -- when you have a uniform array of existing scores, scoring is easy
 # harder: switching between addition modes
 #			how about: take frame_no as input?  --> check.
 # harder harder: making this work when subsq frames aren't already filled in  --> not yet...
@@ -13,149 +9,34 @@
 # TWO GOALS:  streamline this ;  rewrite as search-backward-call-in-progress
 
 
-# BELOW USED IN WRITING/TESTING VERSIONS FOR HARD-CODED GAMES
-# @strikes_frames = Array.new
-	# 9.times { @strikes_frames << [10] }
-	# @strikes_frames << [10,10,10]
-# @strikes_scores = Array.new
-	
-# @spares_frames = Array.new
-	# 9.times { @spares_frames << [9,1] }
-	# @spares_frames << [9,1,9]
-# @spares_scores = Array.new
-	
-# @inc_frames = Array.new
-	# 10.times { @inc_frames << [8,1] }
-# @inc_scores = Array.new
-	
-# puts @strikes_frames.inspect	
-# puts @spares_frames.inspect
-# puts @inc_frames.inspect
-
-
-def score_strikes()
-
-	(0..9).each do |i|
-		
-		if i == 0	#frame 1
-		
-			print "\nf#{i + 1}:\t"
-			print @strikes_frames[i][0], "\t"
-			frame_score = @strikes_frames[i][0] + @strikes_frames[i+1][0] + @strikes_frames[i+2][0]
-			@strikes_scores <<  frame_score
-			print @strikes_scores[i]
-		
-		elsif i >=1 and i <= 7	#frames 2-8
-		
-			print "\nf#{i + 1}:\t"
-			print @strikes_frames[i][0], "\t"
-			frame_score = @strikes_frames[i][0] + @strikes_frames[i+1][0] + @strikes_frames[i+2][0]
-			@strikes_scores <<  ( @strikes_scores[i - 1] + frame_score )
-			print @strikes_scores[i]
-		
-		elsif i == 8	#frame 9
-					
-			print "\nf#{i + 1}:\t"
-			print @strikes_frames[i][0], "\t"
-			frame_score = @strikes_frames[i][0] + @strikes_frames[i+1][0] + @strikes_frames[i+1][1]
-			@strikes_scores <<  ( @strikes_scores[i - 1] + frame_score )
-			print @strikes_scores[i]
-			
-		else	# should mean i == 9
-			
-			print "\nf#{i + 1}:\t"
-			print @strikes_frames[i][0], "\t"
-			frame_score = @strikes_frames[i][0] + @strikes_frames[i][1] + @strikes_frames[i][2]
-			@strikes_scores <<  ( @strikes_scores[i - 1] + frame_score )
-			print @strikes_scores[i]
-			
-		end
-		
-	end
-
-	puts 
-	puts @strikes_scores.inspect
-	
-end
-
-
-def score_spares()
-
-	(0..9).each do |i|
-		
-		if i == 0	#frame 1
-		
-			print "\nf#{i + 1}:\t"
-			print @spares_frames[i][0], ", ", @spares_frames[i][1], "\t"
-			frame_score = @spares_frames[i][0] + @spares_frames[i][1] + @spares_frames[i+1][0]
-			@spares_scores <<  frame_score
-			print @spares_scores[i]
-			
-		elsif i >= 1 and i <= 8
-			
-			print "\nf#{i + 1}:\t"
-			print @spares_frames[i][0], ", ", @spares_frames[i][1], "\t"
-			frame_score = @spares_frames[i][0] + @spares_frames[i][1] + @spares_frames[i+1][0]
-			@spares_scores <<  @spares_scores[i-1] + frame_score
-			print @spares_scores[i]
-
-		else	# i=9 -> 10th frame
-			
-			print "\nf#{i + 1}:\t"
-			print @spares_frames[i][0], ", ", @spares_frames[i][1], ", ", @spares_frames[i][2], "\t"
-			frame_score = @spares_frames[i][0] + @spares_frames[i][1] + @spares_frames[i][2]
-			@spares_scores <<  @spares_scores[i-1] + frame_score
-			print @spares_scores[i]
-			
-		end
-		
-	end
-
-	puts
-	puts @spares_scores.inspect
-	
-end
-
-
-def score_inc()
-
-	(0..9).each do |i|
-		
-		if i == 0	#frame 1
-		
-			print "\nf#{i + 1}:\t"
-			print @inc_frames[i][0], ", ", @inc_frames[i][1], "\t"
-			frame_score = @inc_frames[i][0] + @inc_frames[i][1]
-			@inc_scores <<  frame_score
-			print @inc_scores[i]
-			
-		else
-			
-			print "\nf#{i + 1}:\t"
-			print @inc_frames[i][0], ", ", @inc_frames[i][1], "\t"
-			frame_score = @inc_frames[i][0] + @inc_frames[i][1]
-			@inc_scores << @inc_scores[i-1] + frame_score
-			print @inc_scores[i]
-
-		end
-		
-	end
-
-	puts
-	puts @inc_scores.inspect
-	
-end
-
-
 @frames = Array.new
 @scores = Array.new
 
+
+def tally(f_ind1,r_ind1,f_ind2,r_ind2,f_ind3,r_ind3)
+
+	frame_score = @frames[f_ind1][r_ind1] + @frames[f_ind2][r_ind2]		# always summing at least two frames
+	
+	unless f_ind3.nil? == true										# need this way b/c nil values break addition
+		frame_score = frame_score + @frames[f_ind3][r_ind3] 
+	end
+	
+	@scores << frame_score
+	
+	print "\n* #{f_ind1} #{r_ind1} #{f_ind2} #{r_ind2} #{f_ind3} #{r_ind3} *\n"
+	unless f_ind1 == 0		# can't use @frame_no here --> it's already been incremented up to 11 by roll_master and left that way
+			@scores[-1] = @scores[-1] + @scores[-2] 
+	end
+	
+end
+
+
 def score_master(i)		# frame_no --> i  ;   this will run once per roll, but requires that all rolls have happened
-
-	# print "\nf#{i + 1}:\t"
-
+	
 	# CASE: FIRST FRAME (always diff b/c no prior total)  -->  this b/c of running total; way to option out for shorter method?
 	#						what about @scores << @scores[-1] first, then @scores = @scores + frame_score?
+	#	THINK this has been offloaded to tally method....we'll see
+	
 	if i == 0			
 	
 		if @frames[i][0] == 10	# if strike in first frame
@@ -163,28 +44,31 @@ def score_master(i)		# frame_no --> i  ;   this will run once per roll, but requ
 			if @frames[i+1][0] == 10	# followed by strike in next frame
 				
 				# NEXT TWO FIRST ROLLS
-				frame_score = @frames[i][0] + @frames[i+1][0] + @frames[i+2][0]	# doesn't matter whether strike or not - just adding
-				@scores << frame_score
-			
+				# frame_score = @frames[i][0] + @frames[i+1][0] + @frames[i+2][0]	# doesn't matter whether strike or not - just adding
+				# @scores << frame_score
+				tally(i,0,i+1,0,i+2,0)
+				
 			else	# doesn't matter whether spare - taking both for bonus
 			
 				# NEXT FRAME BOTH
-				frame_score = @frames[i][0] + @frames[i+1][0] + @frames[i+1][1]
-				@scores << frame_score
-			
+				# frame_score = @frames[i][0] + @frames[i+1][0] + @frames[i+1][1]
+				# @scores << frame_score
+				tally(i,0,i+1,0,i+1,1)
 			end
 						
 		elsif @frames[i].reduce(:+) == 10		# if spare in first frame
 		
 			# NEXT FRAME FIRST ROLL 
-			frame_score = @frames[i][0] + @frames[i][1] + @frames[i+1][0]
-			@scores << frame_score
+			# frame_score = @frames[i][0] + @frames[i][1] + @frames[i+1][0]
+			# @scores << frame_score
+			tally(i,0,i,1,i+1,0)
 		
 		else	# no bonus for first frame
 		
 			# NO BONUS
-			frame_score = @frames[i][0] + @frames[i][1]
-			@scores << frame_score							
+			# frame_score = @frames[i][0] + @frames[i][1]
+			# @scores << frame_score		
+			tally(i,0,i,1,nil,nil)
 			
 		end
 	
@@ -196,28 +80,32 @@ def score_master(i)		# frame_no --> i  ;   this will run once per roll, but requ
 			if @frames[i+1][0] == 10	# followed by strike in next frame
 				
 				# NEXT TWO FIRST ROLLS
-				frame_score = @frames[i][0] + @frames[i+1][0] + @frames[i+2][0]	# doesn't matter whether strike or not - just adding
-				@scores << @scores[-1] + frame_score
-			
+				# frame_score = @frames[i][0] + @frames[i+1][0] + @frames[i+2][0]	# doesn't matter whether strike or not - just adding
+				# @scores << @scores[-1] + frame_score
+				tally(i,0,i+1,0,i+2,0)
+				
 			else	# doesn't matter whether spare - taking both for bonus
 				
 				# NEXT FRAME FIRST ROLL
-				frame_score = @frames[i][0] + @frames[i+1][0] + @frames[i+1][1]
-				@scores << @scores[-1] + frame_score
-			
+				# frame_score = @frames[i][0] + @frames[i+1][0] + @frames[i+1][1]
+				# @scores << @scores[-1] + frame_score
+				tally(i,0,i+1,0,i+1,1)
+				
 			end
 						
 		elsif @frames[i].reduce(:+) == 10		# if spare in first frame
 		
 			# NEXT FRAME FIRST ROLL
-			frame_score = @frames[i][0] + @frames[i][1] + @frames[i+1][0]
-			@scores << @scores[-1] + frame_score
+			# frame_score = @frames[i][0] + @frames[i][1] + @frames[i+1][0]
+			# @scores << @scores[-1] + frame_score
+			tally(i,0,i,1,i+1,0)
 		
 		else	# no bonus for first frame
 		
 			# NO BONUS
-			frame_score = @frames[i][0] + @frames[i][1]
-			@scores << @scores[-1] + frame_score
+			# frame_score = @frames[i][0] + @frames[i][1]
+			# @scores << @scores[-1] + frame_score
+			tally(i,0,i,1,nil,nil)
 			
 		end
 	
@@ -234,12 +122,13 @@ def score_master(i)		# frame_no --> i  ;   this will run once per roll, but requ
 								
 		elsif @frames[i].reduce(:+) == 10		# spare in first frame
 		
-			
+			#
 			frame_score = @frames[i][0] + @frames[i][1] + @frames[i+1][0]
 			@scores << @scores[-1] + frame_score
 		
 		else	
 		
+			# 
 			frame_score = @frames[i][0] + @frames[i][1]
 			@scores << @scores[-1] + frame_score
 			
@@ -254,33 +143,9 @@ def score_master(i)		# frame_no --> i  ;   this will run once per roll, but requ
 
 end
 
-# BELOW USED IN TESTING HARD-CODED GAMES AT FIRST
-# score_strikes
 
-# @frames = @strikes_frames
-# 10.times { |i| score_master(i) }
-# puts "> > > > >"
-# puts @scores.inspect
 
-# score_spares
-
-# @scores = Array.new
-# @frames = @spares_frames
-# 10.times { |i| score_master(i) }
-# puts "> > > > >"
-# puts @scores.inspect
-
-# score_inc
-
-# @scores = Array.new
-# @frames = @inc_frames
-# 10.times { |i| score_master(i) }
-# puts "> > > > >"
-# puts @scores.inspect
-
-# ==========================================================================================================================
-
-# need following variables:
+# need following variables for roll method(s)
 
 @roll_no = 1
 @frame_no = 1
@@ -294,10 +159,10 @@ puts @frame_scores.inspect
 puts @game_scores.inspect
 
 
-def roll_results(index)			# this is fine as long as roll method written in terms of @pins_remaining, not pins_hit (which is now local)
+def roll_results(index)			# need roll method written in terms of @pins_remaining, not pins_hit (which is now local)
 	
 	pins_hit = rand(0..@pins_remaining)    
-	print "\t#{pins_hit}"
+	print "\t#{pins_hit}"	
 	
 	@pins_remaining = @pins_remaining-pins_hit
 	# print "\t#{@pins_remaining}"			# useful for testing but not needed for final output
@@ -397,6 +262,7 @@ end
 
 
 2.times { puts "------------------" }
+
 until @frame_no == 11
 	roll	
 end
