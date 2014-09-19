@@ -1,7 +1,11 @@
-# Bowling simulator - draft #1
+# Bowling simulator - second draft
 #     Starting from DL#2 via codersdojo, with mods:
 #     Going to try random-generating (vs. hard coding) frame results, 
 #     and setting up for skill variation (=odds variation), multiple bowlers
+
+# FOR DRAFT 2 -- 	HAVE WORKING ROLL METHOD THAT RUNS FULL GAME FOR SINGLE RANDOM PLAYER;
+#					NEXT:  NEED TO DEPOSIT ROLL RESULTS IN ARRAY, WRITE SCORE METHOD
+
 
 # try to write as class, where # players gets picked when activating
 
@@ -21,18 +25,30 @@
 # third test:  add roll_no and start branching method
 #              --> this turns into working complete game (save 10th frame) really quickly
 # fourth test: add bonus rolls for 10th frame (into existing flowchart)
-#              looks like handles 10th frame spare correctly - still waiting for strike...
-#			   okay: as written, 10th frame strike only gets one bonus roll
-#			   WORK-AROUND: using roll_no = 3 or 4 for bonus rolls (spare will jump from 2 to 4?)
+#				strike trickier than spare;
+#				WORK-AROUND: using roll_no = 3/4/5 for bonus rolls
 #				cases:  strike [3] some [5] remainder;  strike [3] strike [4] 10;   some spare [4] 10;
+# if refactoring, can replace 10-pin and remainder rolls with sub-methods, though each only called twice
+# fifth test:  set up array to store before printing
 
 
+# =============================================================================
+
+# need following variables:
 
 @roll_no = 1
 @frame_no = 1
 @pins_remaining = 10
+# deal with multiple players later
 
-def roll()
+
+@results = Array.new
+
+(0...10).each { |i| @results[i] = [nil, nil, nil, nil] }
+
+puts @results.inspect
+
+def roll()                   # add player as argument later
 
 	puts "f#{@frame_no} r#{@roll_no}:"
     
@@ -44,6 +60,12 @@ def roll()
 		@pins_remaining = @pins_remaining-pins_hit
 		print "\t#{@pins_remaining}\n"
 	
+		# puts @results[@frame_no - 1].inspect
+		# puts @results[@frame_no - 1][0].inspect
+		
+		@results[@frame_no - 1][0] = pins_hit 
+		# puts @results.inspect 
+				
 		if @pins_remaining == 0 and @frame_no == 10    # using pins_rem b/c better for 2nd roll below...
 
 			@roll_no = 3							   # this is used for 1st bonus after strike only
@@ -67,7 +89,10 @@ def roll()
 	
 		@pins_remaining = @pins_remaining-pins_hit
 		print "\t#{@pins_remaining}\n"
-
+		
+		@results[@frame_no - 1][1] = pins_hit 
+		# puts @results.inspect
+		
 		if @pins_remaining == 0 and @frame_no == 10    # using pins_rem covers spare and strike here
 
 			@roll_no = 4							   # spare sends to final (3rd) bonus roll
@@ -89,6 +114,9 @@ def roll()
 	
 		@pins_remaining = @pins_remaining-pins_hit
 		print "\t#{@pins_remaining}\n"
+		
+		@results[9][1] = pins_hit 
+		puts @results.inspect
 	
 		if @pins_remaining == 0
 			
@@ -109,6 +137,9 @@ def roll()
 		
 		@pins_remaining = @pins_remaining-pins_hit
 		print "\t#{@pins_remaining}\n"
+		
+		@results[9][2] = pins_hit 
+		puts @results.inspect
 
 				@frame_no += 1
 		
@@ -119,6 +150,9 @@ def roll()
 	
 		@pins_remaining = @pins_remaining-pins_hit
 		print "\t#{@pins_remaining}\n"
+		
+		@results[9][2] = pins_hit 
+		puts @results.inspect
 
 		@frame_no += 1
 	
@@ -126,8 +160,8 @@ def roll()
 	
 end
 
-# 20.times {roll}
-# @frame_no = 1
+
+
 
 puts "------------------"
 until @frame_no == 11
