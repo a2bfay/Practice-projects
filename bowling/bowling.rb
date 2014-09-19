@@ -111,7 +111,6 @@ def tally(f_ind1,r_ind1,f_ind2,r_ind2,f_ind3,r_ind3)
 end
 
 
-
 # Run complete set of rolls, then score on line-by-line basis
 
 # @frame_scores = Array.new
@@ -130,7 +129,7 @@ end
 		print @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\n"
 	end
 
-	# if @game_scores[-1] == 300
+	# if @game_scores[-1] == 300		# um, don't run in this form unless you mean it
 		# perfect = true
 	# end
 
