@@ -14,7 +14,7 @@
 # adding: score_progress, tally_prog[?]
 
 # need following variables 
-
+#
 @roll_type = 1
 @frame_no = 1
 @pins_remaining = 10							# deal with multiple players later
@@ -81,26 +81,71 @@ end
 
 
 # works frame by frame; means never looks forward, also never has to look back >3 frames
-# for now, plan on calling w/in roll as score_progress(@frame_no)
+# for now, plan on calling w/in roll as score_progress(@frame_no - 1)
 #
 def score_progress(i)
+  framesum = @frame_scores[i].reduce(:+)
+  
+  # need these? or want for legibility?
+  #
+  unless i == 0
+    frameprev = @frame_scores[i - 1].reduce(:+)
+  end
+  unless i <= 1
+    frame2prev = @frame_scores[i - 2].reduce(:+)
+  end
 
-	# what to check? 
-	# is this frame a bonus? if so, do nothing
-	# all other cases assume frame tot < 10
-	#
-	# is it the first frame? if so, 
-	# 
-	# if prev frame has total, add current to previous	
-	#
-	#
-	#
-	#
+    # is this frame a bonus? if so, need nil as placeholder?
+    # *all* other cases assume frame tot < 10     --> except 10th frame <--
+    #
+  if framesum == 10
+    @game_scores << nil
+    
+    # is it the first frame? if so, frametot-->scoretot
+    # don't have to worry about going past beginning of array
+    #
+  elsif i == 0
+    @game_scores << framesum
+    
+    # if prev frame has total - no bonus in effect - add current to previous	
+    #
+  elsif @game_scores[-1].nil? == false
+    @game_scores << @game_scores[i - 1] + framesum
+
+  else  
+      # remaining cases all assume nil/bonus in prev frame:
+      # don't need to recheck, but type of bonus matters; 
+      # so does 2prev frame (in every subcase? -- no)
+      #
+      # start here b/c two nils in a row can only happen with two strikes
+      # gaaaah this will require an exception for early frames, won't it?
+      #
+    if @game_scores[-2].nil? == true
+      @game_scores[-2] = @game_scores[-3] + 20 + @frame_scores[i][0]
+        # don't forget to append current...
+ 
+       # down to either strike or spare on prev frame
+       # treat strike next
+       #
+    elsif @frame_scores[i - 1][0] == 10 
+      @game_scores[-1] = @game_scores[-2] + 10 + framesum
+      
+      # leaves spare on prev frame
+      #
+    else
+      @game_scores[-1] = @game_scores[-2] + 10 + @frame_scores[i][0]
+      ####  RESUME HERE
+    end
+  
+  end
 
 end
 
 
-def score_complete(i)		# frame_no --> i  ;   this will run once per roll, but requires that all rolls have happened
+# this is not tied to @frame_no; has to be iterated by separate loop at end
+# only augments score array for first case; otherwise done in tally_comp
+#
+def score_complete(i)		
   if i == 9								# last frame
     frame_score = @frame_scores[i].reduce(:+)
     @game_scores << @game_scores[-1] + frame_score
