@@ -1,6 +1,7 @@
 # Bowling simulator for single player with random result on each roll
 # Works by scoring game *after* all rolls have been completed
 #		i.e. it can't score a game-in-progress b/c working forward from each frame, not backward
+# Option at end to repeat games for stats-checking
 
 # ===========================================
 
@@ -16,66 +17,45 @@
 @game_scores = Array.new
 
 def roll					                    # add player as argument later
-		# puts
-		# puts "f#{@frame_no} r#{@roll_no}:"	# useful in design --> omitting now that score can handle output
-
-	if @roll_no == 1
-		roll_results(@roll_no - 1)		# calling roll_r(0)
-
-		if @pins_remaining == 0 and @frame_no == 10    # using pins_rem b/c better for 2nd roll below...
-			@roll_no = 3							   # this is used for 1st bonus after strike only
-			@pins_remaining = 10
-		elsif @pins_remaining == 0
-			# score			# can't call here (or places below) w/ current score method - needs inverse
-			@frame_no += 1
-			@pins_remaining = 10 
-		else
-			@roll_no = 2
-		end
-		
-	elsif @roll_no == 2  
-		roll_results(@roll_no - 1)		# # calling roll_r(1)
-		
-		if @pins_remaining == 0 and @frame_no == 10    # using pins_rem covers spare and strike here
-			@roll_no = 4							   # spare sends to final (3rd) bonus roll
-			@pins_remaining = 10
-		else
-			# score
-			@frame_no += 1 
-			@roll_no = 1 
-			@pins_remaining = 10 
-		end
-
-	elsif @roll_no == 3    				# this is 1st bonus after 10th frame strike, so array index always =1
+	
+	if @roll_no == 4					# only for 10th/3rd
+		roll_results(2)
+		@frame_no += 1
+			
+	elsif @roll_no == 3					# only for 1st bonus after 10th frame strike, so array index always =1
 		roll_results(1)			        # --> means always going to have 3rd roll
 		if @pins_remaining == 0
 			@pins_remaining == 10
 		end		
 		@roll_no = 4
 			# don't increment frame here because always passes to another roll
+
+	else
+		roll_results(@roll_no - 1)		# should work for 1st or 2nd roll
+	
+		if @roll_no == 1
+
+			if @pins_remaining == 0 and @frame_no == 10    # 10th fr strike
+				@roll_no = 3							   # --> to 1st bonus after strike
+				@pins_remaining = 10
+			elsif @pins_remaining == 0
+				@frame_no += 1
+				@pins_remaining = 10 
+			else
+				@roll_no = 2
+			end
 		
-	else						# only for roll = 4, which is always 3rd/10th
-		roll_results(2)
-		@frame_no += 1
-	
-	
-		# if @pins_remaining == 0
-			# @roll_no = 4
-			# @pins_remaining = 10		# think this was missing before....
-		# else
-			# @roll_no = 5
-		# end
-		# # don't increment frame here because always passes to another roll
-	
-	# elsif @roll_no == 4 				# used for 3rd frame after spare OR strike
-		# roll_results(2)
-		# # score
-		# @frame_no += 1
-		
-	# else								# should only call if roll=5
-		# roll_results(2)
-		# # score
-		# @frame_no += 1
+		elsif @roll_no == 2  
+			
+			if @pins_remaining == 0 and @frame_no == 10    # using pins_rem covers spare and strike here
+				@roll_no = 4							   # spare sends to final (3rd) bonus roll
+				@pins_remaining = 10
+			else
+				@frame_no += 1 
+				@roll_no = 1 
+				@pins_remaining = 10 
+			end
+		end
 	end
 end										
 
@@ -131,6 +111,7 @@ def tally(f_ind1,r_ind1,f_ind2,r_ind2,f_ind3,r_ind3)
 end
 
 
+
 # Run complete set of rolls, then score on line-by-line basis
 
 # @frame_scores = Array.new
@@ -149,7 +130,7 @@ end
 		print @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\n"
 	end
 
-	# if @game_scores[-1] == 250
+	# if @game_scores[-1] == 300
 		# perfect = true
 	# end
 
