@@ -10,11 +10,12 @@
 
 # ===========================================
 
-# methods: roll, roll_results(called by roll), score_complete, tally_comp(called by score_complete)
+# existing methods: roll, roll_results(called by roll), score_complete, tally_comp(called by score_complete)
+# adding: score_progress, tally_prog[?]
 
 # need following variables 
 
-@roll_no = 1
+@roll_type = 1
 @frame_no = 1
 @pins_remaining = 10							# deal with multiple players later
 
@@ -23,41 +24,41 @@
 
 def roll					                    # add player as argument later
 	
-  if @roll_no == 4					# only for 10th/3rd
+  if @roll_type == 4					# only for 10th/3rd
     roll_results(2)
     @frame_no += 1
 		
-  elsif @roll_no == 3					# only for 1st bonus after 10th frame strike, so array index always =1
+  elsif @roll_type == 3					# only for 1st bonus after 10th frame strike, so array index always =1
     roll_results(1)			        # --> means always going to have 3rd roll
       if @pins_remaining == 0
         @pins_remaining == 10
       end		
-      @roll_no = 4
+      @roll_type = 4
         # don't increment frame here because always passes to another roll
 
   else
-    roll_results(@roll_no - 1)		# should work for 1st or 2nd roll
+    roll_results(@roll_type - 1)		# should work for 1st or 2nd roll
 	
-    if @roll_no == 1
+    if @roll_type == 1
 
       if @pins_remaining == 0 and @frame_no == 10    # 10th fr strike
-        @roll_no = 3							   # --> to 1st bonus after strike
+        @roll_type = 3							   # --> to 1st bonus after strike
         @pins_remaining = 10
       elsif @pins_remaining == 0
         @frame_no += 1
         @pins_remaining = 10 
       else
-        @roll_no = 2
+        @roll_type = 2
       end
 		
-    elsif @roll_no == 2  
+    elsif @roll_type == 2  
 			
       if @pins_remaining == 0 and @frame_no == 10    # using pins_rem covers spare and strike here
-        @roll_no = 4							   # spare sends to final (3rd) bonus roll
+        @roll_type = 4							   # spare sends to final (3rd) bonus roll
         @pins_remaining = 10
       else
         @frame_no += 1 
-        @roll_no = 1 
+        @roll_type = 1 
         @pins_remaining = 10 
       end
     end
@@ -76,6 +77,26 @@ def roll_results(index)						# requires roll method written in terms of @pins_re
     @frame_scores[@frame_no - 1] << pins_hit
   end
     # print "\t", @frame_scores.inspect # for testing
+end
+
+
+# works frame by frame; means never looks forward, also never has to look back >3 frames
+# for now, plan on calling w/in roll as score_progress(@frame_no)
+#
+def score_progress(i)
+
+	# what to check? 
+	# is this frame a bonus? if so, do nothing
+	# all other cases assume frame tot < 10
+	#
+	# is it the first frame? if so, 
+	# 
+	# if prev frame has total, add current to previous	
+	#
+	#
+	#
+	#
+
 end
 
 
@@ -130,7 +151,8 @@ end
   end
 
   10.times do |i| 
-    score_complete(i) 
+    # puts i		# yes, from 0 to 9
+	score_complete(i) 
     print @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\n"
   end
 
@@ -141,7 +163,7 @@ end
 # gamecount += 1
 # @frame_scores = Array.new
 # @game_scores = Array.new
-# @roll_no = 1
+# @roll_type = 1
 # @frame_no = 1
 # @pins_remaining = 10
 # end
