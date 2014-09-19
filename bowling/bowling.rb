@@ -1,10 +1,13 @@
-# Bowling simulator - second draft
+# Bowling simulator - third draft
 #     Starting from DL#2 via codersdojo, with mods:
 #     Going to try random-generating (vs. hard coding) frame results, 
 #     and setting up for skill variation (=odds variation), multiple bowlers
 
 # FOR DRAFT 2 -- 	HAVE WORKING ROLL METHOD THAT RUNS FULL GAME FOR SINGLE RANDOM PLAYER;
 #					NEXT:  NEED TO DEPOSIT ROLL RESULTS IN ARRAY, WRITE SCORE METHOD
+
+# FOR DRAFT 3 --	HAVE RESULTS STORED IN ARRAY; LOTS OF DUPLICATE SHORT LINES BUT NOT MOVING TO SEPARATE METHODS JUST YET
+#                   { note from later : still working with grid of nils at this point - no good )
 
 
 # try to write as class, where # players gets picked when activating
@@ -34,6 +37,15 @@
 
 # =============================================================================
 
+
+
+
+
+
+
+
+
+
 # need following variables:
 
 @roll_no = 1
@@ -41,12 +53,27 @@
 @pins_remaining = 10
 # deal with multiple players later
 
-
 @results = Array.new
-
 (0...10).each { |i| @results[i] = [nil, nil, nil, nil] }
-
 puts @results.inspect
+
+
+def roll_results(index)			# this is fine as long as roll method written in terms of @pins_remaining, not pins_hit (which is now local)
+	
+	pins_hit = rand(0..@pins_remaining)    
+	print "\t#{pins_hit}"
+	
+	@pins_remaining = @pins_remaining-pins_hit
+	print "\t#{@pins_remaining}\n"
+	
+	# puts @results[@frame_no - 1].inspect
+	# puts @results[@frame_no - 1][0].inspect
+		
+	@results[@frame_no - 1][index] = pins_hit   # math for bonus cases handled in roll method
+	# puts @results.inspect 
+	
+end
+
 
 def roll()                   # add player as argument later
 
@@ -54,24 +81,16 @@ def roll()                   # add player as argument later
     
 	if @roll_no == 1
 
-		pins_hit = rand(0..10)    
-		print "\t#{pins_hit}"
-	
-		@pins_remaining = @pins_remaining-pins_hit
-		print "\t#{@pins_remaining}\n"
-	
-		# puts @results[@frame_no - 1].inspect
-		# puts @results[@frame_no - 1][0].inspect
-		
-		@results[@frame_no - 1][0] = pins_hit 
-		# puts @results.inspect 
+		# ======================================== this chunk appears 5x w/ minor variation; should be able to extract as method
+		roll_results(@roll_no - 1)
+		# =======================================
 				
 		if @pins_remaining == 0 and @frame_no == 10    # using pins_rem b/c better for 2nd roll below...
 
 			@roll_no = 3							   # this is used for 1st bonus after strike only
 			@pins_remaining = 10
 			
-		elsif pins_hit == 10
+		elsif @pins_remaining == 0
 			
 			@frame_no += 1
 			@pins_remaining = 10 
@@ -84,14 +103,7 @@ def roll()                   # add player as argument later
 		
 	elsif @roll_no == 2  
 
-		pins_hit = rand(0..@pins_remaining)    
-		print "\t", pins_hit
-	
-		@pins_remaining = @pins_remaining-pins_hit
-		print "\t#{@pins_remaining}\n"
-		
-		@results[@frame_no - 1][1] = pins_hit 
-		# puts @results.inspect
+		roll_results(@roll_no - 1)
 		
 		if @pins_remaining == 0 and @frame_no == 10    # using pins_rem covers spare and strike here
 
@@ -106,18 +118,21 @@ def roll()                   # add player as argument later
 			
 		end
 
-	elsif @roll_no == 3    				# this is 1st bonus after 10th frame strike
+	elsif @roll_no == 3    				# this is 1st bonus after 10th frame strike, so array index always =1
 	                                    # another strike sets roll=4; partial sets roll=5
 										
-		pins_hit = rand(0..10)    
-		print "\t#{pins_hit}"
+		# pins_hit = rand(0..@pins_remaining)    
+		# print "\t#{pins_hit}"
 	
-		@pins_remaining = @pins_remaining-pins_hit
-		print "\t#{@pins_remaining}\n"
+		# @pins_remaining = @pins_remaining-pins_hit
+		# print "\t#{@pins_remaining}\n"
 		
-		@results[9][1] = pins_hit 
-		puts @results.inspect
-	
+		# @results[@frame_no - 1][1] = pins_hit 
+		# puts @results.inspect
+		# --> replace with
+
+		roll_results(1)		
+		
 		if @pins_remaining == 0
 			
 			@roll_no = 4
@@ -132,28 +147,30 @@ def roll()                   # add player as argument later
 	
 	elsif @roll_no == 4 					# used for 3rd frame after spare OR strike
 				
-		pins_hit = rand(0..10)    
-		print "\t#{pins_hit}"
+		# pins_hit = rand(0..@pins_remaining)    
+		# print "\t#{pins_hit}"
 		
-		@pins_remaining = @pins_remaining-pins_hit
-		print "\t#{@pins_remaining}\n"
+		# @pins_remaining = @pins_remaining-pins_hit
+		# print "\t#{@pins_remaining}\n"
 		
-		@results[9][2] = pins_hit 
-		puts @results.inspect
+		# @results[@frame_no - 1][2] = pins_hit 
+		# puts @results.inspect
 
-				@frame_no += 1
+		roll_results(2)
+		@frame_no += 1
 		
 	else								# should only call if roll=5
 		
-		pins_hit = rand(0..@pins_remaining)    
-		print "\t", pins_hit
+		# pins_hit = rand(0..@pins_remaining)    
+		# print "\t", pins_hit
 	
-		@pins_remaining = @pins_remaining-pins_hit
-		print "\t#{@pins_remaining}\n"
+		# @pins_remaining = @pins_remaining-pins_hit
+		# print "\t#{@pins_remaining}\n"
 		
-		@results[9][2] = pins_hit 
-		puts @results.inspect
-
+		# @results[@frame_no - 1][2] = pins_hit 
+		# puts @results.inspect
+		
+		roll_results(2)
 		@frame_no += 1
 	
 	end
@@ -167,3 +184,4 @@ puts "------------------"
 until @frame_no == 11
 	roll
 end
+puts @results.inspect
