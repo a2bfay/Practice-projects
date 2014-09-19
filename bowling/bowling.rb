@@ -1,13 +1,16 @@
 # Bowling simulator for single player with random result on each roll
-# Works by scoring game *after* all rolls have been completed
+# Works by scoring game *after* all rolls have been completed --> now changing
 #		i.e. it can't score a game-in-progress b/c working forward from each frame, not backward
 # Option at end to repeat games for stats-checking
 
-# GIT CHECK: what happens when edit and re-save in directory?
+# GIT CHECK: what happens when edit and re-save in directory? (automatic.)
+#   9/18 switching to git for versions; 
+#   retitling score-master and tally as complete-game methods,
+#   starting game-in-progress scoring
 
 # ===========================================
 
-# methods: roll, roll_results(called by roll), score_master, tally(called by score_master)
+# methods: roll, roll_results(called by roll), score_complete, tally_comp(called by score_complete)
 
 # need following variables 
 
@@ -76,31 +79,31 @@ def roll_results(index)						# requires roll method written in terms of @pins_re
 end
 
 
-def score_master(i)		# frame_no --> i  ;   this will run once per roll, but requires that all rolls have happened
+def score_complete(i)		# frame_no --> i  ;   this will run once per roll, but requires that all rolls have happened
   if i == 9								# last frame
     frame_score = @frame_scores[i].reduce(:+)
     @game_scores << @game_scores[-1] + frame_score
 		
   elsif i == 8 && @frame_scores[i][0] == 10		# strike in 9th frame ->>  take first two of 10th
-    tally(i,0,i+1,0,i+1,1)
+    tally_comp(i,0,i+1,0,i+1,1)
 				
   else
     if @frame_scores[i][0] == 10				# strike in current frame
       if @frame_scores[i+1][0] == 10		# followed by strike in next frame
-        tally(i,0,i+1,0,i+2,0)
+        tally_comp(i,0,i+1,0,i+2,0)
       else							# followed by anything else
-        tally(i,0,i+1,0,i+1,1)
+        tally_comp(i,0,i+1,0,i+1,1)
       end
     elsif @frame_scores[i].reduce(:+) == 10	# spare in current frame
-      tally(i,0,i,1,i+1,0)
+      tally_comp(i,0,i,1,i+1,0)
     else								# no bonus
-      tally(i,0,i,1,nil,nil)
+      tally_comp(i,0,i,1,nil,nil)
     end
   end
 end
 
 
-def tally(f_ind1,r_ind1,f_ind2,r_ind2,f_ind3,r_ind3)
+def tally_comp(f_ind1,r_ind1,f_ind2,r_ind2,f_ind3,r_ind3)
   frame_score = @frame_scores[f_ind1][r_ind1] + @frame_scores[f_ind2][r_ind2]		# always summing at least two frame_scores
     unless f_ind3.nil? == true										# need this way b/c nil values break addition
       frame_score += @frame_scores[f_ind3][r_ind3]
@@ -127,7 +130,7 @@ end
   end
 
   10.times do |i| 
-    score_master(i) 
+    score_complete(i) 
     print @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\n"
   end
 
