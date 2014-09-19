@@ -3,6 +3,8 @@
 #		i.e. it can't score a game-in-progress b/c working forward from each frame, not backward
 # Option at end to repeat games for stats-checking
 
+# GIT CHECK: what happens when edit and re-save in directory?
+
 # ===========================================
 
 # methods: roll, roll_results(called by roll), score_master, tally(called by score_master)
