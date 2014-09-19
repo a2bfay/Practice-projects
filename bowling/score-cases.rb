@@ -18,14 +18,18 @@ def tally(f_ind1,r_ind1,f_ind2,r_ind2,f_ind3,r_ind3)
 	frame_score = @frames[f_ind1][r_ind1] + @frames[f_ind2][r_ind2]		# always summing at least two frames
 	
 	unless f_ind3.nil? == true										# need this way b/c nil values break addition
+
 		frame_score = frame_score + @frames[f_ind3][r_ind3] 
+
 	end
 	
 	@scores << frame_score
+	# print "\n* #{f_ind1} #{r_ind1} #{f_ind2} #{r_ind2} #{f_ind3} #{r_ind3} *\n"		# for testing
 	
-	print "\n* #{f_ind1} #{r_ind1} #{f_ind2} #{r_ind2} #{f_ind3} #{r_ind3} *\n"
-	unless f_ind1 == 0		# can't use @frame_no here --> it's already been incremented up to 11 by roll_master and left that way
-			@scores[-1] = @scores[-1] + @scores[-2] 
+	unless f_ind1 == 0		# can't use @frame_no here 
+							# --> it's already been incremented up to 11 by roll_master and left that way
+		@scores[-1] = @scores[-1] + @scores[-2] 
+			
 	end
 	
 end
@@ -33,104 +37,43 @@ end
 
 def score_master(i)		# frame_no --> i  ;   this will run once per roll, but requires that all rolls have happened
 	
-	# CASE: FIRST FRAME (always diff b/c no prior total)  -->  this b/c of running total; way to option out for shorter method?
-	#						what about @scores << @scores[-1] first, then @scores = @scores + frame_score?
-	#	THINK this has been offloaded to tally method....we'll see
-	
-	if i == 0			
-	
-		if @frames[i][0] == 10	# if strike in first frame
-		
-			if @frames[i+1][0] == 10	# followed by strike in next frame
-				
-				# NEXT TWO FIRST ROLLS
-				# frame_score = @frames[i][0] + @frames[i+1][0] + @frames[i+2][0]	# doesn't matter whether strike or not - just adding
-				# @scores << frame_score
-				tally(i,0,i+1,0,i+2,0)
-				
-			else	# doesn't matter whether spare - taking both for bonus
-			
-				# NEXT FRAME BOTH
-				# frame_score = @frames[i][0] + @frames[i+1][0] + @frames[i+1][1]
-				# @scores << frame_score
-				tally(i,0,i+1,0,i+1,1)
-			end
-						
-		elsif @frames[i].reduce(:+) == 10		# if spare in first frame
-		
-			# NEXT FRAME FIRST ROLL 
-			# frame_score = @frames[i][0] + @frames[i][1] + @frames[i+1][0]
-			# @scores << frame_score
-			tally(i,0,i,1,i+1,0)
-		
-		else	# no bonus for first frame
-		
-			# NO BONUS
-			# frame_score = @frames[i][0] + @frames[i][1]
-			# @scores << frame_score		
-			tally(i,0,i,1,nil,nil)
-			
-		end
-	
-	# CASE: MIDDLE FRAMES  -->  identical w/ above **except for running total**
-	elsif i <=7
+	if i <=7
 	
 		if @frames[i][0] == 10	# if strike in current frame
 		
 			if @frames[i+1][0] == 10	# followed by strike in next frame
 				
-				# NEXT TWO FIRST ROLLS
-				# frame_score = @frames[i][0] + @frames[i+1][0] + @frames[i+2][0]	# doesn't matter whether strike or not - just adding
-				# @scores << @scores[-1] + frame_score
 				tally(i,0,i+1,0,i+2,0)
 				
 			else	# doesn't matter whether spare - taking both for bonus
 				
-				# NEXT FRAME FIRST ROLL
-				# frame_score = @frames[i][0] + @frames[i+1][0] + @frames[i+1][1]
-				# @scores << @scores[-1] + frame_score
 				tally(i,0,i+1,0,i+1,1)
 				
 			end
 						
 		elsif @frames[i].reduce(:+) == 10		# if spare in first frame
 		
-			# NEXT FRAME FIRST ROLL
-			# frame_score = @frames[i][0] + @frames[i][1] + @frames[i+1][0]
-			# @scores << @scores[-1] + frame_score
 			tally(i,0,i,1,i+1,0)
 		
 		else	# no bonus for first frame
-		
-			# NO BONUS
-			# frame_score = @frames[i][0] + @frames[i][1]
-			# @scores << @scores[-1] + frame_score
+	
 			tally(i,0,i,1,nil,nil)
 			
 		end
-	
-		# can i still get to frame_score outside this loop?  YES
-		# puts ">>>>>>>>>>>>#{frame_score}<<<<<<<<<<"
 	
 	elsif i == 8		# requires changes only for strike
 	
 		if @frames[i][0] == 10	# strike in 9th frame  ->>  means take first two of 10th no matter what
 		
-				# ALL THREE ROLLS
-				frame_score = @frames[i][0] + @frames[i+1][0] + @frames[i+1][1]
-				@scores << @scores[-1] + frame_score
-								
-		elsif @frames[i].reduce(:+) == 10		# spare in first frame
+				tally(i,0,i+1,0,i+1,1)
+				
+		elsif @frames[i].reduce(:+) == 10		# spare
 		
-			#
-			frame_score = @frames[i][0] + @frames[i][1] + @frames[i+1][0]
-			@scores << @scores[-1] + frame_score
+			tally(i,0,i,1,i+1,0)
 		
 		else	
 		
-			# 
-			frame_score = @frames[i][0] + @frames[i][1]
-			@scores << @scores[-1] + frame_score
+			tally(i,0,i,1,nil,nil)
 			
 		end
 		
