@@ -1,4 +1,4 @@
-# Bowling simulator - 4th draft
+# Bowling simulator - 5th draft
 #     Starting from DL#2 via codersdojo, with mods:
 #     Going to try random-generating (vs. hard coding) frame results, 
 #     and setting up for skill variation (=odds variation), multiple bowlers
@@ -13,6 +13,11 @@
 #					if want to output results frame-by-frame, score needs to be called repeatedly and work with one line at a time
 #					going to follow through with initial array setup, but pretty clear all the nil vals are no good -- need two arrays for rolls/scores
 #					think rolls/scores array, plus score meth branches written in terms of last_total placeholder that guides search...
+
+# FOR DRAFT 5 --	Scrapping initial results array, setting up separate roll/score holders
+#					roll array will have some single elements (strikes), some array elements (bonus, spares, <10)
+#					and maybe: leave blank row at beginning so frame variable doesn't require subtraction?
+
 
 
 # try to write as class, where # players gets picked when activating
@@ -58,9 +63,11 @@
 @pins_remaining = 10
 # deal with multiple players later
 
-@results = Array.new
-(0...10).each { |i| @results[i] = [nil, nil, nil, nil] }
-puts @results.inspect
+@frame_scores = Array.new
+@game_scores = Array.new
+#(0...10).each { |i| @frame_scores[i] = [nil, nil, nil, nil] }
+puts @frame_scores.inspect
+puts @game_scores.inspect
 
 
 def roll_results(index)			# this is fine as long as roll method written in terms of @pins_remaining, not pins_hit (which is now local)
@@ -71,11 +78,17 @@ def roll_results(index)			# this is fine as long as roll method written in terms
 	@pins_remaining = @pins_remaining-pins_hit
 	# print "\t#{@pins_remaining}"			# useful for testing but not needed for final output
 	
-	# puts @results[@frame_no - 1].inspect
-	# puts @results[@frame_no - 1][0].inspect
+	if index == 0 
 		
-	@results[@frame_no - 1][index] = pins_hit   # math for bonus cases handled in roll method
-	# puts @results.inspect 
+		@frame_scores << [pins_hit]   # math for bonus cases handled in roll method
+	
+	else 
+	
+		@frame_scores[@frame_no - 1] << pins_hit
+
+	end
+		
+	# print "\t", @frame_scores.inspect 
 	
 end
 
@@ -167,55 +180,58 @@ end
 #				will score complete game *if* no strikes/spares -- any one s/s loses running total for rest of game
 # third test:  get running total to reach back to last non-nil total
 #				works *unless* first frame is s/s
+# DRAFT 5 -- starting over from new results array; should be able to use length/sum of nested arrays to direct
 
-def score()			
+
+
+
+def score()		
+
+	print "\t", @frame_scores[@frame_no - 1].inspect
+	frame_total = @frame_scores[@frame_no - 1].reduce(:+)
+	#frame_prev = @frame_scores[@frame_no - 2].reduce(:+)
+	# print "\t", @frame_scores[@frame_no - 2].inspect		# OKAY : this becomes @frame_scores[-1], which is a real thing but the wrong thing
+	print "\t", frame_total
 	
-	# temp = [1, 2, 3, 4, nil, 5]
-	# print "\t\t#{temp.compact.reduce(:+)}"
+	# okay, how about this: skip the usual display patterns; keep a running total and then back-modify; no nil values
 	
-	
-	
-	if @results[@frame_no - 1][0] == 10 or @results[@frame_no - 1][0] + @results[@frame_no - 1][1] == 10
-										#  unwieldy, but avoids asking for addition w/ nil (doesn't work)
-		print "\tten or sum=ten"
-		return
-	
-		# if strike or spare, do nothing for now
-	
-	else	# only here if frame != 10;  separating out first frame from running total
+	if @frame_no == 1
+
+		@game_scores << frame_total
+						
+	else
+		   # this should be <10 following spare
+		if frame_total != 10 and @frame_scores[@frame_no - 2].reduce(:+) == 10 and @frame_scores[@frame_no - 2].length == 2
 		
-		if @frame_no == 1		# since checking prior frame below, need to separate 1st frame here
-		
-			@results[@frame_no - 1][3] = @results[@frame_no - 1][0] + @results[@frame_no - 1][1]
-			print "\ta: #{@results[@frame_no - 1][3]}"
-		
-		elsif @results[@frame_no - 2][3] != nil		# this alone provides running total for game *without* any strikes/spares
-		
-			@results[@frame_no - 1][3] = @results[@frame_no - 1][0] + @results[@frame_no - 1][1] + @results[@frame_no - 2][3]
-			print "\tb: #{@results[@frame_no - 1][3]}"
-		
-		else			# this kicks in if prior frame ==nil
-		
-			i = 2
-			i += 1 until i == @frame_no or @results[@frame_no - i][3] != nil 
+			print "\n\tspare: ", @game_scores[-1], "/", @frame_scores[@frame_no - 1][0], "/", frame_total, "\n"
+			@game_scores[-1] = @game_scores[-1]+ @frame_scores[@frame_no - 1][0]
+			print "\t\t\t\t", @game_scores.inspect
+			@game_scores << @game_scores[-1] + frame_total
 			
-			if i == @frame_no		# means have gone back to first frame w/o finding any totals
-									# don't use .compact.reduce for now, b/c know both rolls in first frame have integer
-				
-				print "\tc: +#{@results[@frame_no - i][0] + @results[@frame_no - i][1]} --> "
-				@results[@frame_no - 1][3] = @results[@frame_no - 1][0] + @results[@frame_no - 1][1] + @results[@frame_no - i][0] + @results[@frame_no - i][1]
-				print @results[@frame_no - 1][3]													   # grabbing roll scores from first frame
-			
-			else					# should mean found non-nil frame *before* getting back to first
-			
-				@results[@frame_no - 1][3] = @results[@frame_no - 1][0] + @results[@frame_no - 1][1] + @results[@frame_no - i][3]
-				print "\td: #{@results[@frame_no - 1][3]}"
-				
-			end
+		# end
 		
+		
+		# frame_total != 10
+
+		# if @game_scores[@frame_no - 2].nil? == true
+			
+			# @game_scores << frame_total	
+			# print " bonus"
+			
+		else
+			
+			# puts
+			# puts @frame_no
+			# puts (@frame_no - 2)
+			# puts ">>", @game_scores[@frame_no - 2].inspect
+			@game_scores << @game_scores[-1] + frame_total
+
+
 		end
-		
+	
 	end
+
+	print "\n\t\t\t\t", @game_scores.inspect
 	
 end
 
@@ -226,5 +242,4 @@ until @frame_no == 11
 	roll				# once add mult players, this needs to iterate; but maybe def score so runs all at once?
 	# score -- oh, this runs every roll, not every frame --> call within roll?
 end
-puts
-puts @results.inspect
+print "\n\n", @frame_scores.inspect
