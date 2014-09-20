@@ -45,6 +45,7 @@ def roll					                    # add player as argument later
         @roll_type = 3							   # --> to 1st bonus after strike
         @pins_remaining = 10
       elsif @pins_remaining == 0
+        score_progress(@frame_no - 1)
         @frame_no += 1
         @pins_remaining = 10 
       else
@@ -57,6 +58,7 @@ def roll					                    # add player as argument later
         @roll_type = 4							   # spare sends to final (3rd) bonus roll
         @pins_remaining = 10
       else
+        score_progress(@frame_no - 1)
         @frame_no += 1 
         @roll_type = 1 
         @pins_remaining = 10 
@@ -68,15 +70,14 @@ end
 
 def roll_results(index)						# requires roll method written in terms of @pins_remaining, not pins_hit (which is now local)
   pins_hit = rand(0..@pins_remaining)    
-    # print "\t#{pins_hit}"					# for testing --> final output to score method
   @pins_remaining = @pins_remaining - pins_hit
-    # print "\t#{@pins_remaining}"			# useful for testing but not needed for final output
+    
   if index == 0 
     @frame_scores << [pins_hit]   		# math for bonus cases handled in roll method
   else 
     @frame_scores[@frame_no - 1] << pins_hit
   end
-    # print "\t", @frame_scores.inspect # for testing
+  # print "\t", @frame_scores.inspect # for testing
 end
 
 
@@ -101,6 +102,7 @@ def score_progress(i)
   if framesum == 10
     @game_scores << nil
     
+    # *all* cases below include frame tot < 10
     # is it the first frame? if so, frametot-->scoretot
     # don't have to worry about going past beginning of array
     #
@@ -117,28 +119,31 @@ def score_progress(i)
       # don't need to recheck, but type of bonus matters; 
       # so does 2prev frame (in every subcase? -- no)
       #
-      # start here b/c two nils in a row can only happen with two strikes
+
+      # start here b/c two nils in a row can *only* happen with two strikes
       # gaaaah this will require an exception for early frames, won't it?
       #
     if @game_scores[-2].nil? == true
       @game_scores[-2] = @game_scores[-3] + 20 + @frame_scores[i][0]
-        # don't forget to append current...
- 
+      @game_scores[-1] = @game_scores[-2] + framesum
+      @game_scores << @game_scores[-1] + framesum
+       #
        # down to either strike or spare on prev frame
+
        # treat strike next
        #
     elsif @frame_scores[i - 1][0] == 10 
       @game_scores[-1] = @game_scores[-2] + 10 + framesum
-      
+      @game_scores << @game_scores + framesum
+            
       # leaves spare on prev frame
       #
     else
       @game_scores[-1] = @game_scores[-2] + 10 + @frame_scores[i][0]
-      ####  RESUME HERE
+      @game_scores << @game_scores[-1] + framesum
     end
-  
   end
-
+  print @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\n"
 end
 
 
@@ -195,6 +200,9 @@ end
     roll	
   end
 
+  
+  # setting aside while writing inline scoring
+  #
   10.times do |i| 
     # puts i		# yes, from 0 to 9
 	score_complete(i) 
