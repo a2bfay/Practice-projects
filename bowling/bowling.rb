@@ -85,17 +85,39 @@ end
 # for now, plan on calling w/in roll as score_progress(@frame_no - 1)
 #
 def score_progress(i)
+  puts @frame_scores[i].inspect
+  puts "test #{i}"
+
   framesum = @frame_scores[i].reduce(:+)
   
-  # need these? or want for legibility?
+  # okay, so: 3-frame scan limit only works if check update frame *first* -
+  # b/c nil two frames back *always* means consecutive strikes preceding
   #
-  unless i == 0
-    frameprev = @frame_scores[i - 1].reduce(:+)
-  end
-  unless i <= 1
-    frame2prev = @frame_scores[i - 2].reduce(:+)
+  if i == 2 && @game_scores[-2].nil? == true
+    @game_scores[-2] = 20 + @frame_scores[i][0]
+  elsif i >= 3 && @game_scores[-2].nil? == true
+    @game_scores[-2] = @game_scores[-3] + 20 + @frame_scores[i][0]
   end
 
+  # now handle bonus on prev frame (only)
+  #
+  if i == 1 && @game_scores[-1].nil? == true
+    if @frame_scores[0][0] == 10
+      if @frame_scores[1][0] == 10
+        @game_scores << nil
+      else
+        @game_scores[-1] = 10 + framesum
+      end
+    else
+      @game_scores[-1] 
+    end
+  elsif @game_scores[-1].nil? == true
+  
+  end
+  
+  #      RESUME HERE
+  
+    
     # is this frame a bonus? if so, need nil as placeholder?
     # *all* other cases assume frame tot < 10     --> except 10th frame <--
     #
@@ -121,9 +143,10 @@ def score_progress(i)
       #
 
       # start here b/c two nils in a row can *only* happen with two strikes
-      # gaaaah this will require an exception for early frames, won't it?
+      # gaaaah this will require an exception for early frames, won't it?  (YEP)
       #
     if @game_scores[-2].nil? == true
+      print "+ + #{@game_scores[-2]}, #{@game_scores[-3]}, #{@frame_scores[i][0]}\n"
       @game_scores[-2] = @game_scores[-3] + 20 + @frame_scores[i][0]
       @game_scores[-1] = @game_scores[-2] + framesum
       @game_scores << @game_scores[-1] + framesum
@@ -133,8 +156,9 @@ def score_progress(i)
        # treat strike next
        #
     elsif @frame_scores[i - 1][0] == 10 
+      print "* * #{@game_scores[-1]}, #{framesum}\n"
       @game_scores[-1] = @game_scores[-2] + 10 + framesum
-      @game_scores << @game_scores + framesum
+      @game_scores << @game_scores[-1] + framesum
             
       # leaves spare on prev frame
       #
@@ -199,15 +223,15 @@ end
   until @frame_no == 11
     roll	
   end
-
+  puts @frame_scores.inspect
   
   # setting aside while writing inline scoring
   #
-  10.times do |i| 
-    # puts i		# yes, from 0 to 9
-	score_complete(i) 
-    print @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\n"
-  end
+  # 10.times do |i| 
+    # # puts i		# yes, from 0 to 9
+	# score_complete(i) 
+    # print @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\n"
+  # end
 
 # if @game_scores[-1] == 300		# um, don't run in this form unless you mean it
 #   perfect = true
