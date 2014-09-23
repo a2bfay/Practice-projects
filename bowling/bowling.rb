@@ -1,29 +1,33 @@
 # Bowling simulator for multiple players with skill-weighted random result on each roll
-# Option to score game in progress or after all rolls complete
+# [eventual] Option to score game in progress or after all rolls complete - for now latter disabled
 # Options at end to repeat games for stats-checking
 
-# 9/23 score-in-progress finished -- beginning multiplayer/skill options
+# 9/23 score-in-progress finished -- multiplayer working, skill working
 #   
 # existing methods: roll, roll_results(called by roll)
 #                   score_progress, update_2prev, update_prev (both called by score_progress)
 #                   score_complete, tally_comp(called by score_complete)
+# added:            newgame, getplayers, turn_control
 
-# CHANGES NEEDED:   array to store player/skill combinations
+# CHANGES NEEDED:   array to store player/skill combinations -- check (simple; no nesting required)
 #                   player number as argument for methods -- check
-#                   way to increment frames/rolls across players -- think ok but need below to test
-#                   extra nesting/layer to @frame_scores and @game_scores arrays --> with changes to all refs
-#                   in general : @frame_scores[i][0] --> @frame_scores[player][frame][roll]
+#                   way to increment frames/rolls across players -- check
+#                   extra nesting/layer to @frame_scores and @game_scores arrays --> with changes to all refs 
+#                   in general : @frame_scores[i][0] --> @frame_scores[player][frame][roll] -- check
+# PLUS:             now adding skill variation -- check
+#                   DECIDED ON : arithmetic rather than exponential approach -- gets to pro level w/ much simpler math
 
-# SO:               BEFORE CHANGING METHODS, FIGURE OUT HOW GAME CONTROL/FLOW IS GOING TO WORK
 
 # ===========================================
 
 def newgame
 
+  puts "\n========================================================="
+  
   @players = Array.new
   @frame_scores = Array.new
   @game_scores = Array.new
-
+    
   @player = 1
   @frame_no = 1
   @roll_type = 1
@@ -33,22 +37,32 @@ end
   
   
 def getplayers
-  
-  puts "How many players (1-4) ?"
+    
+  print "How many players(1-4)?  "
   numplayers = gets.chomp.to_i
+    numplayers = 1 if numplayers < 1
+    numplayers = 4 if numplayers > 4
+  puts "Enter skill level between 0 and 100 (10+ = good, 20+ = v.good, 30+ = pro):"
   (1..numplayers).each do |p|
-    puts "Skill level for player #{p} (1=lowest, 10=highest) ?"
+    print "Skill level for player #{p}?  "
     skill = gets.chomp.to_i
-    @players << skill      
+      skill = 0 if skill < 0
+      skill = 100 if skill > 100
+    @players << skill
+    @frame_scores << []
+    @game_scores << []    
   end
-  puts @players.inspect
+  print @players.inspect, @frame_scores.inspect, @game_scores.inspect
 end
 
 
 def turn_control(player)
-
+  
+  puts "\nturn control: player #{player} #players #{@players.length}"
+  
   if player == @players.length
     @frame_no += 1
+    @player = 1
   else
     @player += 1
   end
@@ -61,15 +75,17 @@ end
 def roll(player)
 	
   if @roll_type == 4					  # only for 10th/3rd
+    puts "\n> > > #{@pins_remaining}"
     roll_results(player,2)
-    score_progress(@frame_no - 1) 
-    # @frame_no += 1
-		turn_control(player)
+    score_progress(player,@frame_no - 1) 
+    turn_control(player)
     
   elsif @roll_type == 3				  # only for 1st bonus after 10th frame strike, so array index always =1
     roll_results(player,1)			# --> means always have 3rd roll; don't score
+    puts "\n    > #{@pins_remaining}"
       if @pins_remaining == 0
-        @pins_remaining == 10
+        @pins_remaining = 10
+        puts "\n  > > #{@pins_remaining}"
       end		
       @roll_type = 4            # don't increment frame here because always passes to another roll
 
@@ -81,9 +97,7 @@ def roll(player)
         @roll_type = 3							                 # --> to 1st bonus after strike
         @pins_remaining = 10
       elsif @pins_remaining == 0
-        score_progress(@frame_no - 1)
-        # @frame_no += 1
-        # @pins_remaining = 10 
+        score_progress(player,@frame_no - 1)
         turn_control(player)
       else
         @roll_type = 2
@@ -93,10 +107,7 @@ def roll(player)
         @roll_type = 4							                 # spare sends to final (3rd) bonus roll
         @pins_remaining = 10
       else
-        score_progress(@frame_no - 1)
-        # @frame_no += 1 
-        # @roll_type = 1 
-        # @pins_remaining = 10 
+        score_progress(player,@frame_no - 1)
         turn_control(player)
       end
     end
@@ -104,69 +115,85 @@ def roll(player)
 end
 
 
-def roll_results(player = 1,type)						
+def roll_results(player,type)						
   
-  pins_hit = rand(0..(2 * @pins_remaining))    
-  if pins_hit >= @pins_remaining
-    pins_hit = @pins_remaining
+  skill = @players[player - 1]
+  
+  print "\nplayer#{player} skill#{skill}"
+  
+  # skill_limit = ((@pins_remaining + 1) ** skill) - 1      # DISCARDED -- math operations b/c too taxing as 300 games become more likely
+  # skill_pick = rand(0..skill_limit)
+  # pins_hit = (skill_pick ** (1.0/skill)).to_i
+  
+  alt_limit = (@pins_remaining) + skill
+  alt_pick = rand(0..alt_limit)
+  if alt_pick > @pins_remaining
+    alt_pick = @pins_remaining
   end
+  pins_hit = alt_pick
+  print "\t#{alt_limit}/#{pins_hit}"
+  # diff = pins_hit - alt_pick
+  # @testsum += diff
+  # # if pins_hit >= @pins_remaining
+    # pins_hit = @pins_remaining
+  # end
   @pins_remaining = @pins_remaining - pins_hit
     
   if type == 0 
-    @frame_scores << [pins_hit]   		# math for bonus cases handled in roll method
+    @frame_scores[player - 1] << [pins_hit]   		# math for bonus cases handled in roll method
   else 
-    @frame_scores[@frame_no - 1] << pins_hit
+    @frame_scores[player - 1][@frame_no - 1] << pins_hit
   end
-  # print "\t", @frame_scores.inspect # for testing
+  # print "\t", @frame_scores[player - 1].inspect # for testing
   
 end
 
 
 # works frame by frame; means never looks forward, also never has to look back >3 frames
 #
-def score_progress(player = 1,i)
-  print "\n", @frame_scores[i].inspect
-  print "\n\t\t\t", @game_scores.inspect, "\n"
-  puts "sp#{i}"
- 
-  framesum = @frame_scores[i].reduce(:+)
+def score_progress(player,i)
+  puts "\np#{player}sc#{i}"
+  print "\n", @frame_scores[player - 1][i].inspect
+  print "\n\t\t\t", @game_scores[player - 1].inspect, "\n"
+   
+  framesum = @frame_scores[player - 1][i].reduce(:+)
   
-  if i >= 2 && @game_scores[-2].nil? == true
-    update_2prev(i)
+  if i >= 2 && @game_scores[player - 1][-2].nil? == true
+    update_2prev(player,i)
   end
 
-  if i >= 1 && @game_scores[-1].nil? == true
-    update_prev(i,framesum)
+  if i >= 1 && @game_scores[player - 1][-1].nil? == true
+    update_prev(player,i,framesum)
   end
   
   if i == 9 
-    @game_scores << @game_scores[-1] + framesum
+    @game_scores[player - 1] << @game_scores[player - 1][-1] + framesum
   elsif framesum == 10
-    @game_scores << nil
+    @game_scores[player - 1] << nil
     puts "line #{__LINE__} - nil for 10 frame"  # this now adding extra nils w/ function separated out...
   elsif i == 0
-    @game_scores << framesum
+    @game_scores[player - 1] << framesum
     puts "line #{__LINE__} - first frame != 10"
   else 
-    @game_scores << @game_scores[i - 1] + framesum
+    @game_scores[player - 1] << @game_scores[player - 1][i - 1] + framesum
     puts "line #{__LINE__} regular addition for frame>=2"
   end
 
-  print "-->\t", @frame_scores[i].inspect
-  print "\n\t\t", @game_scores[i].inspect, "\t", @game_scores.inspect, "\n\n"
+  print "-->\t", @frame_scores[player - 1][i].inspect
+  print "\n\t\t", @game_scores[player - 1][i].inspect, "\t", @game_scores[player - 1].inspect, "\n\n"
 end
 
 
 # nil two frames back *always* means consecutive strikes preceding
 #
-def update_2prev(i)
+def update_2prev(player,i)
 
   if i == 2
-    @game_scores[-2] = 20 + @frame_scores[i][0]
-    puts "line #{__LINE__} - 2prev:\t#{@game_scores.inspect}"
+    @game_scores[player - 1][-2] = 20 + @frame_scores[player - 1][i][0]
+    puts "line #{__LINE__} - 2prev:\t#{@game_scores[player - 1].inspect}"
   else
-    @game_scores[-2] = @game_scores[-3] + 20 + @frame_scores[i][0]
-    puts "line #{__LINE__} - 2prev:\t#{@game_scores.inspect}"
+    @game_scores[player - 1][-2] = @game_scores[player - 1][-3] + 20 + @frame_scores[player - 1][i][0]
+    puts "line #{__LINE__} - 2prev:\t#{@game_scores[player - 1].inspect}"
   end
   
 end
@@ -174,38 +201,38 @@ end
 
 # only alters value of prior frame when appropriate -- never appends current
 #
-def update_prev(i,framesum)
+def update_prev(player,i,framesum)
 
-  if @frame_scores[i - 1][0] == 10 && @frame_scores[i][0] == 10
+  if @frame_scores[player - 1][i - 1][0] == 10 && @frame_scores[player - 1][i][0] == 10
     puts "line #{__LINE__} - two consec strikes"
       if i == 9
-        @game_scores[-1] = @game_scores[-2] + 10 + @frame_scores[i][0] + @frame_scores[i][1]
+        @game_scores[player - 1][-1] = @game_scores[player - 1][-2] + 10 + @frame_scores[player - 1][i][0] + @frame_scores[player - 1][i][1]
         puts "line #{__LINE__} - strike in 9th/10th frames"
-        puts "\t\t\t#{@game_scores.inspect}"
+        puts "\t\t\t#{@game_scores[player - 1].inspect}"
       end
     return                               
     
   elsif i == 1 
-    if @frame_scores[0][0] == 10
-      @game_scores[0] = 10 + framesum
+    if @frame_scores[player - 1][0][0] == 10
+      @game_scores[player - 1][0] = 10 + framesum
       puts "line #{__LINE__} - strike in first frame"
     else
-      @game_scores[0] = 10 + @frame_scores[1][0]
+      @game_scores[player - 1][0] = 10 + @frame_scores[player - 1][1][0]
       puts "line #{__LINE__} - spare in first frame"
     end
     
   else
-    if @frame_scores[i - 1][0] == 10
+    if @frame_scores[player - 1][i - 1][0] == 10
         if i == 9 
-          @game_scores[-1] = @game_scores[-2] + 10 + @frame_scores[i][0] + @frame_scores[i][1]      
-          print "line #{__LINE__} - stk9not10:\t#{@game_scores.inspect}\n"
+          @game_scores[player - 1][-1] = @game_scores[player - 1][-2] + 10 + @frame_scores[player - 1][i][0] + @frame_scores[player - 1][i][1]      
+          print "line #{__LINE__} - stk9not10:\t#{@game_scores[player - 1].inspect}\n"
         else
-          @game_scores[-1] = @game_scores[-2] + 10 + framesum
-          print "line #{__LINE__} - strike prev: #{@game_scores.inspect}\n"
+          @game_scores[player - 1][-1] = @game_scores[player - 1][-2] + 10 + framesum
+          print "line #{__LINE__} - strike prev: #{@game_scores[player - 1].inspect}\n"
         end
     else
-      @game_scores[-1] = @game_scores[-2] + 10 + @frame_scores[i][0]
-      puts "line #{__LINE__} - spare prev:  #{@game_scores.inspect}\n"
+      @game_scores[player - 1][-1] = @game_scores[player - 1][-2] + 10 + @frame_scores[player - 1][i][0]
+      puts "line #{__LINE__} - spare prev:  #{@game_scores[player - 1].inspect}\n"
     end
   end
 
@@ -217,22 +244,22 @@ end
 #
 def score_complete(i)		
   if i == 9								# last frame
-    frame_score = @frame_scores[i].reduce(:+)
+    frame_score = @frame_scores[player - 1][i].reduce(:+)
     # puts frame_score
-    # puts @game_scores[-1]
-    @game_scores << @game_scores[-1] + frame_score
+    # puts @game_scores[player - 1][-1]
+    @game_scores[player - 1] << @game_scores[player - 1][-1] + frame_score
 		
-  elsif i == 8 && @frame_scores[i][0] == 10		# strike in 9th frame ->>  take first two of 10th
+  elsif i == 8 && @frame_scores[player - 1][i][0] == 10		# strike in 9th frame ->>  take first two of 10th
     tally_comp(i,0,i+1,0,i+1,1)
 				
   else
-    if @frame_scores[i][0] == 10				# strike in current frame
-      if @frame_scores[i+1][0] == 10		# followed by strike in next frame
+    if @frame_scores[player - 1][i][0] == 10				# strike in current frame
+      if @frame_scores[player - 1][i+1][0] == 10		# followed by strike in next frame
         tally_comp(i,0,i+1,0,i+2,0)
       else							# followed by anything else
         tally_comp(i,0,i+1,0,i+1,1)
       end
-    elsif @frame_scores[i].reduce(:+) == 10	# spare in current frame
+    elsif @frame_scores[player - 1][i].reduce(:+) == 10	# spare in current frame
       tally_comp(i,0,i,1,i+1,0)
     else								# no bonus
       tally_comp(i,0,i,1,nil,nil)
@@ -242,14 +269,14 @@ end
 
 
 def tally_comp(f_ind1,r_ind1,f_ind2,r_ind2,f_ind3,r_ind3)
-  frame_score = @frame_scores[f_ind1][r_ind1] + @frame_scores[f_ind2][r_ind2]		# always summing at least two frame_scores
+  frame_score = @frame_scores[player - 1][f_ind1][r_ind1] + @frame_scores[player - 1][f_ind2][r_ind2]		# always summing at least two frame_scores
     unless f_ind3.nil? == true										# need this way b/c nil values break addition
-      frame_score += @frame_scores[f_ind3][r_ind3]
+      frame_score += @frame_scores[player - 1][f_ind3][r_ind3]
     end
-  @game_scores << frame_score
+  @game_scores[player - 1] << frame_score
       # print "\n* #{f_ind1} #{r_ind1} #{f_ind2} #{r_ind2} #{f_ind3} #{r_ind3} *\n"		# for debug
     unless f_ind1 == 0		# can't use @frame_no here; ==11 via roll_master
-      @game_scores[-1] = @game_scores[-1] + @game_scores[-2] 
+      @game_scores[player - 1][-1] = @game_scores[player - 1][-1] + @game_scores[player - 1][-2] 
     end
 end
 
@@ -270,22 +297,25 @@ until gamecount == 2
     roll(@player)	
   end
   puts
-  puts @frame_scores.inspect
+  puts "diff = #{@testsum}"
+  puts
+  (0...@players.length).each { |i| puts @frame_scores[i].inspect, @game_scores[i][-1], "\n" }
   puts
  
-  progtotal = @game_scores[-1]
+  # SET ASIDE CHECKSUM WHILE FILLING ARRAYS CORRECTLY
+  # progtotal = @game_scores[player - 1][-1]
 
-  @game_scores = Array.new    # reset for second method
+  # @game_scores = Array.new    # reset for second method
 
-  10.times do |i| 
-  # puts i		# yes, from 0 to 9
-	score_complete(i) 
-    print @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\t", @game_scores[-1].inspect, "\n"
-  end
+  # 10.times do |i| 
+  # # puts i		# yes, from 0 to 9
+	# score_complete(i) 
+    # print @frame_scores[player - 1][i].inspect, "\t", @game_scores[player - 1][i].inspect, "\t", @game_scores[player - 1][-1].inspect, "\n"
+  # end
 
-  checksum = progtotal - @game_scores[-1]
-  puts 
-  puts checksum
+  # checksum = progtotal - @game_scores[player - 1][-1]
+  # puts 
+  # puts checksum
   
 # if @game_scores[-1] == 300		# um, don't run in this form unless you mean it
 #   perfect = true
