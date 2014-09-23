@@ -87,6 +87,8 @@ end
 
 # works frame by frame; means never looks forward, also never has to look back >3 frames
 # for now, plan on calling w/in roll as score_progress(@frame_no - 1)
+# 9/22 - working except for 10th frame special cases ( i think )
+#
 #
 def score_progress(i)
   print "\n", @frame_scores[i].inspect, "\t\t\t", @game_scores.inspect, "\n"
@@ -94,72 +96,17 @@ def score_progress(i)
  
   framesum = @frame_scores[i].reduce(:+)
   
-  
-  # okay, so: 3-frame scan limit only works if check back frames *first* -
-  # b/c nil two frames back *always* means consecutive strikes preceding
-  #
-  if i == 2 && @game_scores[-2].nil? == true
-    @game_scores[-2] = 20 + @frame_scores[i][0]
-    puts "line #{__LINE__} 2prev:\t#{@game_scores.inspect}"
-  elsif i >= 3 && @game_scores[-2].nil? == true
-    @game_scores[-2] = @game_scores[-3] + 20 + @frame_scores[i][0]
-    puts "line #{__LINE__} 2prev:\t#{@game_scores.inspect}"
+  if i >= 2 && @game_scores[-2].nil? == true
+    update_2prev(i)
   end
 
-  
-  # now handle bonus on prev frame (only)
-  # can't be completed as number if strike followed by strike  -?-  but only matters early on, otherwise caught by usual bonus method?
-  # or is the point here just to deal with early cases?
-  #
-  if i == 1 && @game_scores[0].nil? == true
-  
-    # strike on first frame
-    #
-    if @frame_scores[0][0] == 10
-      if @frame_scores[1][0] == 10
-        @game_scores << nil       # might need this after all
-        puts "line #{__LINE__} bonus - two opening strikes"
-        
-        print "\t*", @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\t", @game_scores.inspect, "\n\n"
-        return
-        
-      else
-        @game_scores[0] = 10 + framesum
-        puts "line #{__LINE__} - strike on first frame"
-      end
-    # spare on first frame
-    #
-    else
-      @game_scores[0] = 10 + @frame_scores[1][0]
-      puts "line #{__LINE__} - first frame spare"
-    end
-  
-  elsif i >= 2 && @game_scores[-1].nil? == true         # this still needs cases - not dealing with consec strikes
-    
-    # strike on prev frame
-    #
-    if @frame_scores[i - 1][0] == 10
-      if @frame_scores[i][0] == 10 
-        @game_scores << nil
-        puts "line #{__LINE__} - two consec strikes"
-        
-        print "\t*", @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\t", @game_scores.inspect, "\n\n"
-        return
-        
-      else 
-        @game_scores[-1] = @game_scores[-2] + 10 + framesum
-        print "line #{__LINE__} - strike on prev frame: #{@game_scores.inspect}\n"
-        # @game_scores << @game_scores[-1] + framesum   # leave this out for now
-      end
-    # spare on prev frame
-    #
-    else
-      @game_scores[-1] = @game_scores[-2] + 10 + @frame_scores[i][0]
-      # @game_scores << @game_scores[-1] + framesum
-      puts "line #{__LINE__}: spare prev"
-    end
-      
+  if i >= 1 && @game_scores[-1].nil? == true
+    update_prev(i,framesum)
   end
+  
+
+  
+  
   
   
   # is this frame a bonus? if so, append nil as placeholder
@@ -167,7 +114,7 @@ def score_progress(i)
   #
   if framesum == 10
     @game_scores << nil
-    puts "line #{__LINE__} - nil for 10 frame"
+    puts "line #{__LINE__} - nil for 10 frame"  # this now adding extra nils w/ function separated out...
     
   # *all* cases below include frame tot < 10
   # is it the first frame? if so, frametot-->scoretot
@@ -216,7 +163,78 @@ def score_progress(i)
       # puts "line #{__LINE__}: spare prev at end of method"
     # end
   end
-  print "\t", @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\t", @game_scores.inspect, "\n\n"
+  print "-->\t", @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\t", @game_scores.inspect, "\n\n"
+end
+
+
+def update_2prev(i)
+
+  # okay, so: 3-frame scan limit only works if check back frames *first* -
+  # b/c nil two frames back *always* means consecutive strikes preceding
+  #
+  if i == 2
+    @game_scores[-2] = 20 + @frame_scores[i][0]
+    puts "line #{__LINE__} - 2prev:\t#{@game_scores.inspect}"
+  else
+    @game_scores[-2] = @game_scores[-3] + 20 + @frame_scores[i][0]
+    puts "line #{__LINE__} - 2prev:\t#{@game_scores.inspect}"
+  end
+end
+
+
+def update_prev(i,framesum)
+
+  # now handle bonus on prev frame (only)
+  # can't be completed as number if strike followed by strike  -?-  but only matters early on, otherwise caught by usual bonus method?
+  # or is the point here just to deal with early cases?
+  #
+  if i == 1
+  
+    # strike on prev=first frame
+    #
+    if @frame_scores[0][0] == 10
+      if @frame_scores[1][0] == 10
+        # @game_scores << nil       # might need this after all
+        puts "line #{__LINE__} bonus - two opening strikes"
+        #  print "\t*", @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\t", @game_scores.inspect, "\n\n"
+        return        
+      else
+        @game_scores[0] = 10 + framesum
+        puts "line #{__LINE__} - strike on first frame"
+      end
+      
+    # spare on prev=first frame
+    #
+    else
+      @game_scores[0] = 10 + @frame_scores[1][0]
+      puts "line #{__LINE__} - first frame spare"
+    end
+  
+  else
+    
+    # strike on prev frame
+    #
+    if @frame_scores[i - 1][0] == 10
+      if @frame_scores[i][0] == 10 
+        # @game_scores << nil
+        puts "line #{__LINE__} - two consec strikes"        
+        # print "\t*", @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\t", @game_scores.inspect, "\n\n"
+        return  
+      else 
+        @game_scores[-1] = @game_scores[-2] + 10 + framesum
+        print "line #{__LINE__} - strike prev: #{@game_scores.inspect}\n"
+        # @game_scores << @game_scores[-1] + framesum   # leave this out for now
+      end
+    # spare on prev frame
+    #
+    else
+      @game_scores[-1] = @game_scores[-2] + 10 + @frame_scores[i][0]
+      # @game_scores << @game_scores[-1] + framesum
+      puts "line #{__LINE__} - spare prev:  #{@game_scores.inspect}\n"
+    end
+      
+  end
+
 end
 
 
