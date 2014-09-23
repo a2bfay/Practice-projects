@@ -3,9 +3,10 @@
 #		i.e. it can't score a game-in-progress b/c working forward from each frame, not backward
 # Option at end to repeat games for stats-checking
 
-# 9/23 score-in-progress now finished --  DEBUG VERS WITH LINE NOS PRINTED W/ SCORES
+# 9/23 score-in-progress now finished --  DEBUG VERS WITH LINE NOS PRINTED W/ SCORES; RUNS 100X W/ CHECKSUM
 #   two sub-methods defined/working; 10th frame cases handled by update_prev
 #   roll method temp rigged for easier testing
+#   last saved had one exception -- spare followed by zero in 10th bonus, never finished addition
 
 # ===========================================
 
@@ -14,12 +15,12 @@
 
 # need following variables 
 #
-@roll_type = 1
-@frame_no = 1
-@pins_remaining = 10							# deal with multiple players later
+# @roll_type = 1
+# @frame_no = 1
+# @pins_remaining = 10							# deal with multiple players later
 
-@frame_scores = Array.new
-@game_scores = Array.new
+# @frame_scores = Array.new
+# @game_scores = Array.new
 
 def roll					                    # add player as argument later
 	
@@ -104,7 +105,9 @@ def score_progress(i)
     update_prev(i,framesum)
   end
   
-  if framesum == 10
+  if i == 9 
+    @game_scores << @game_scores[-1] + framesum
+  elsif framesum == 10
     @game_scores << nil
     puts "line #{__LINE__} - nil for 10 frame"  # this now adding extra nils w/ function separated out...
   elsif i == 0
@@ -221,10 +224,16 @@ end
 
 # @frame_scores = Array.new
 # @game_scores = Array.new
-# gamecount = 1
+  gamecount = 1
 # perfect = false
 
-# until perfect == true
+until gamecount == 100
+  @roll_type = 1
+  @frame_no = 1
+  @pins_remaining = 10							# deal with multiple players later
+
+  @frame_scores = Array.new
+  @game_scores = Array.new
 
   until @frame_no == 11
     roll	
@@ -233,9 +242,9 @@ end
   puts @frame_scores.inspect
   puts
  
-progtotal = @game_scores[-1]
+  progtotal = @game_scores[-1]
 
-@game_scores = Array.new    # reset for second method
+  @game_scores = Array.new    # reset for second method
 
   10.times do |i| 
   # puts i		# yes, from 0 to 9
@@ -251,7 +260,8 @@ progtotal = @game_scores[-1]
 #   perfect = true
 # end
 
-# gamecount += 1
+ gamecount += 1
+ puts gamecount
 # @frame_scores = Array.new
 # @game_scores = Array.new
 # @roll_type = 1
@@ -260,3 +270,4 @@ progtotal = @game_scores[-1]
 # end
 
 # puts "games required = #{gamecount}"	
+end
