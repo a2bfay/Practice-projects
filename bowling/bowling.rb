@@ -1,8 +1,8 @@
 # Bowling simulator for multiple players with skill-weighted random result on each roll
 # [eventual?] Option to score game in progress or after all rolls complete - for now latter disabled
-# Options at end to repeat games for stats-checking
+# [eventual? Options at end to repeat games for stats-checking --> disabled for now
 
-# 9/23 score-in-progress finished -- multiplayer working, skill working
+# 9/23 score-in-progress finished -- multiplayer working, skill working, formatted
 # THIS VERS:        formatted results output --> happens in score_prog
 #                                             ==> w/ components in getplayers and turn_control as well
 # learned .ljust/.rjust to make work
@@ -22,8 +22,8 @@
 #                   DECIDED ON : arithmetic rather than exponential approach -- gets to pro level w/ much simpler math
 # PLUS:             formatted output for mult players
 
-
 # ============================================================================
+
 
 def newgame
   puts "\n========================================================="
@@ -210,9 +210,9 @@ def update_prev(player,i,framesum)
 end
 
 
+# NOT CURRENTLY IN USE
 # this is not tied to @frame_no; has to be iterated by separate loop at end
 # only augments score array for first case; otherwise done in tally_comp
-# NOT CURRENTLY IN USE
 #
 def score_complete(i)		
   if i == 9								# last frame
@@ -239,7 +239,8 @@ def score_complete(i)
   end
 end
 
-
+# NOT CURRENTLY IN USE
+#
 def tally_comp(f_ind1,r_ind1,f_ind2,r_ind2,f_ind3,r_ind3)
   frame_score = @frame_scores[player - 1][f_ind1][r_ind1] + @frame_scores[player - 1][f_ind2][r_ind2]		# always summing at least two frame_scores
     unless f_ind3.nil? == true										# need this way b/c nil values break addition
@@ -253,7 +254,8 @@ def tally_comp(f_ind1,r_ind1,f_ind2,r_ind2,f_ind3,r_ind3)
 end
 
 
-# Run complete set of rolls, then score on line-by-line basis
+# NOTES HERE TOWARD STATS / COMPARISONS -- SETTING ASIDE FOR BREAK 9/23
+
 
 # @frame_scores = Array.new
 # @game_scores = Array.new
