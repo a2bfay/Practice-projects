@@ -3,8 +3,8 @@
 #		i.e. it can't score a game-in-progress b/c working forward from each frame, not backward
 # Option at end to repeat games for stats-checking
 
-# 9/22 revised score-in-progress nearly finished 
-#   two sub-methods defined/working; still need 10th frame cases
+# 9/23 score-in-progress now finished --  DEBUG VERS WITH LINE NOS PRINTED W/ SCORES
+#   two sub-methods defined/working; 10th frame cases handled by update_prev
 #   roll method temp rigged for easier testing
 
 # ===========================================
@@ -25,7 +25,7 @@ def roll					                    # add player as argument later
 	
   if @roll_type == 4					# only for 10th/3rd
     roll_results(2)
-    # score_progress        # # # # # # PENDING
+    score_progress(@frame_no - 1)        # # # # # # PENDING
     @frame_no += 1
 		
   elsif @roll_type == 3					# only for 1st bonus after 10th frame strike, so array index always =1
@@ -90,7 +90,8 @@ end
 #
 #
 def score_progress(i)
-  print "\n", @frame_scores[i].inspect, "\t\t\t", @game_scores.inspect, "\n"
+  print "\n", @frame_scores[i].inspect
+  print "\n\t\t\t", @game_scores.inspect, "\n"
   puts "sp#{i}"
  
   framesum = @frame_scores[i].reduce(:+)
@@ -114,15 +115,15 @@ def score_progress(i)
     puts "line #{__LINE__} regular addition for frame>=2"
   end
 
-  print "-->\t", @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\t", @game_scores.inspect, "\n\n"
+  print "-->\t", @frame_scores[i].inspect
+  print "\n\t\t", @game_scores[i].inspect, "\t", @game_scores.inspect, "\n\n"
 end
 
 
+# nil two frames back *always* means consecutive strikes preceding
+#
 def update_2prev(i)
 
-  # okay, so: 3-frame scan limit only works if check back frames *first* -
-  # b/c nil two frames back *always* means consecutive strikes preceding
-  #
   if i == 2
     @game_scores[-2] = 20 + @frame_scores[i][0]
     puts "line #{__LINE__} - 2prev:\t#{@game_scores.inspect}"
@@ -139,8 +140,13 @@ end
 def update_prev(i,framesum)
 
   if @frame_scores[i - 1][0] == 10 && @frame_scores[i][0] == 10
-    puts "line #{__LINE__} - two consec strikes"        
-    return  
+    puts "line #{__LINE__} - two consec strikes"
+      if i == 9
+        @game_scores[-1] = @game_scores[-2] + 10 + @frame_scores[i][0] + @frame_scores[i][1]
+        puts "line #{__LINE__} - strike in 9th/10th frames"
+        puts "\t\t\t#{@game_scores.inspect}"
+      end
+    return                               
     
   elsif i == 1 
     if @frame_scores[0][0] == 10
@@ -153,8 +159,13 @@ def update_prev(i,framesum)
     
   else
     if @frame_scores[i - 1][0] == 10
-      @game_scores[-1] = @game_scores[-2] + 10 + framesum
-      print "line #{__LINE__} - strike prev: #{@game_scores.inspect}\n"
+        if i == 9 
+          @game_scores[-1] = @game_scores[-2] + 10 + @frame_scores[i][0] + @frame_scores[i][1]      
+          print "line #{__LINE__} - stk9not10:\t#{@game_scores.inspect}\n"
+        else
+          @game_scores[-1] = @game_scores[-2] + 10 + framesum
+          print "line #{__LINE__} - strike prev: #{@game_scores.inspect}\n"
+        end
     else
       @game_scores[-1] = @game_scores[-2] + 10 + @frame_scores[i][0]
       puts "line #{__LINE__} - spare prev:  #{@game_scores.inspect}\n"
@@ -170,8 +181,8 @@ end
 def score_complete(i)		
   if i == 9								# last frame
     frame_score = @frame_scores[i].reduce(:+)
-    puts frame_score
-    puts @game_scores[-1]
+    # puts frame_score
+    # puts @game_scores[-1]
     @game_scores << @game_scores[-1] + frame_score
 		
   elsif i == 8 && @frame_scores[i][0] == 10		# strike in 9th frame ->>  take first two of 10th
@@ -221,7 +232,8 @@ end
   puts
   puts @frame_scores.inspect
   puts
-  
+ 
+progtotal = @game_scores[-1]
 
 @game_scores = Array.new    # reset for second method
 
@@ -231,6 +243,10 @@ end
     print @frame_scores[i].inspect, "\t", @game_scores[i].inspect, "\t", @game_scores[-1].inspect, "\n"
   end
 
+  checksum = progtotal - @game_scores[-1]
+  puts 
+  puts checksum
+  
 # if @game_scores[-1] == 300		# um, don't run in this form unless you mean it
 #   perfect = true
 # end
