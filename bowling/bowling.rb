@@ -3,7 +3,10 @@
 # Options at end to repeat games for stats-checking
 
 # 9/23 score-in-progress finished -- multiplayer working, skill working
-# THIS VERS:        removing test outputs
+# THIS VERS:        formatted results output --> happens in score_prog
+#                                             ==> w/ components in getplayers and turn_control as well
+# learned .ljust/.rjust to make work
+
 #   
 # existing methods: roll, roll_results(called by roll)
 #                   score_progress, update_2prev, update_prev (both called by score_progress)
@@ -15,8 +18,9 @@
 #                   way to increment frames/rolls across players -- check
 #                   extra nesting/layer to @frame_scores and @game_scores arrays --> with changes to all refs 
 #                   in general : @frame_scores[i][0] --> @frame_scores[player][frame][roll] -- check
-# PLUS:             now adding skill variation -- check
+#                   skill variation -- check
 #                   DECIDED ON : arithmetic rather than exponential approach -- gets to pro level w/ much simpler math
+# PLUS:             formatted output for mult players
 
 
 # ============================================================================
@@ -51,12 +55,19 @@ def getplayers
     @frame_scores << []
     @game_scores << []    
   end
+
+  puts
+  (1..numplayers).each do |p|
+    print "P#{p}(#{@players[p - 1]})".rjust(7), "___________ "
+  end
+  puts
   # print @players.inspect, @frame_scores.inspect, @game_scores.inspect   # for testing
 end
 
 
 def turn_control(player)
   if player == @players.length
+    puts
     @frame_no += 1
     @player = 1
   else
@@ -143,8 +154,8 @@ def score_progress(player,i)
     @game_scores[player - 1] << @game_scores[player - 1][i - 1] + framesum
     # puts "line #{__LINE__} regular addition for frame>=2"
   end
-  # print "p#{player}->\t", @frame_scores[player - 1][i].inspect
-  # print "\n\t\t", @game_scores[player - 1][i].inspect, "\t", @game_scores[player - 1].inspect, "\n\n"
+  print @game_scores[player - 1][i].to_s.rjust(6)
+  print " ", @frame_scores[player - 1][i].inspect.ljust(12)
 end
 
 
@@ -201,6 +212,7 @@ end
 
 # this is not tied to @frame_no; has to be iterated by separate loop at end
 # only augments score array for first case; otherwise done in tally_comp
+# NOT CURRENTLY IN USE
 #
 def score_complete(i)		
   if i == 9								# last frame
@@ -248,7 +260,7 @@ end
   gamecount = 1
 # perfect = false
 
-until gamecount == 2
+# until gamecount == 2
   
   newgame
   getplayers
@@ -257,8 +269,8 @@ until gamecount == 2
     roll(@player)	
   end
   puts
-  (0...@players.length).each { |i| puts @frame_scores[i].inspect, @game_scores[i][-1], "\n" }
-  puts
+  # (0...@players.length).each { |i| puts @frame_scores[i].inspect, @game_scores[i][-1], "\n" }
+  # puts
  
   # SET ASIDE CHECKSUM WHILE FILLING ARRAYS CORRECTLY
   # progtotal = @game_scores[player - 1][-1]
@@ -279,8 +291,8 @@ until gamecount == 2
 #   perfect = true
 # end
 
- gamecount += 1
- puts gamecount
+ # gamecount += 1
+ # puts gamecount
 # @frame_scores = Array.new
 # @game_scores = Array.new
 # @roll_type = 1
@@ -289,4 +301,4 @@ until gamecount == 2
 # end
 
 # puts "games required = #{gamecount}"	
-end
+# end
