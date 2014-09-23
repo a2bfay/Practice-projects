@@ -1,96 +1,130 @@
-# Bowling simulator for single player with random result on each roll
-# Works by scoring game *after* all rolls have been completed --> now changing
-#		i.e. it can't score a game-in-progress b/c working forward from each frame, not backward
-# Option at end to repeat games for stats-checking
+# Bowling simulator for multiple players with skill-weighted random result on each roll
+# Option to score game in progress or after all rolls complete
+# Options at end to repeat games for stats-checking
 
-# 9/23 score-in-progress now finished --  DEBUG VERS WITH LINE NOS PRINTED W/ SCORES; RUNS 100X W/ CHECKSUM
-#   two sub-methods defined/working; 10th frame cases handled by update_prev
-#   roll method temp rigged for easier testing
-#   last saved had one exception -- spare followed by zero in 10th bonus, never finished addition
+# 9/23 score-in-progress finished -- beginning multiplayer/skill options
+#   
+# existing methods: roll, roll_results(called by roll)
+#                   score_progress, update_2prev, update_prev (both called by score_progress)
+#                   score_complete, tally_comp(called by score_complete)
+
+# CHANGES NEEDED:   array to store player/skill combinations
+#                   player number as argument for methods -- check
+#                   way to increment frames/rolls across players -- think ok but need below to test
+#                   extra nesting/layer to @frame_scores and @game_scores arrays --> with changes to all refs
+#                   in general : @frame_scores[i][0] --> @frame_scores[player][frame][roll]
+
+# SO:               BEFORE CHANGING METHODS, FIGURE OUT HOW GAME CONTROL/FLOW IS GOING TO WORK
 
 # ===========================================
 
-# existing methods: roll, roll_results(called by roll), score_complete, tally_comp(called by score_complete)
-# adding: score_progress, tally_prog[?]
+def newgame
 
-# need following variables 
-#
-# @roll_type = 1
-# @frame_no = 1
-# @pins_remaining = 10							# deal with multiple players later
+  @players = Array.new
+  @frame_scores = Array.new
+  @game_scores = Array.new
 
-# @frame_scores = Array.new
-# @game_scores = Array.new
+  @player = 1
+  @frame_no = 1
+  @roll_type = 1
+  @pins_remaining = 10
+  
+end
+  
+  
+def getplayers
+  
+  puts "How many players (1-4) ?"
+  numplayers = gets.chomp.to_i
+  (1..numplayers).each do |p|
+    puts "Skill level for player #{p} (1=lowest, 10=highest) ?"
+    skill = gets.chomp.to_i
+    @players << skill      
+  end
+  puts @players.inspect
+end
 
-def roll					                    # add player as argument later
-	
-  if @roll_type == 4					# only for 10th/3rd
-    roll_results(2)
-    score_progress(@frame_no - 1)        # # # # # # PENDING
+
+def turn_control(player)
+
+  if player == @players.length
     @frame_no += 1
-		
-  elsif @roll_type == 3					# only for 1st bonus after 10th frame strike, so array index always =1
-    roll_results(1)			        # --> means always have 3rd roll; don't score
+  else
+    @player += 1
+  end
+
+  @roll_type = 1 
+  @pins_remaining = 10 
+end
+
+
+def roll(player)
+	
+  if @roll_type == 4					  # only for 10th/3rd
+    roll_results(player,2)
+    score_progress(@frame_no - 1) 
+    # @frame_no += 1
+		turn_control(player)
+    
+  elsif @roll_type == 3				  # only for 1st bonus after 10th frame strike, so array index always =1
+    roll_results(player,1)			# --> means always have 3rd roll; don't score
       if @pins_remaining == 0
         @pins_remaining == 10
       end		
-      @roll_type = 4
-        # don't increment frame here because always passes to another roll
+      @roll_type = 4            # don't increment frame here because always passes to another roll
 
   else
-    roll_results(@roll_type - 1)		# should work for 1st or 2nd roll
+    roll_results(player,@roll_type - 1)		
 	
     if @roll_type == 1
-
       if @pins_remaining == 0 and @frame_no == 10    # 10th fr strike
-        @roll_type = 3							   # --> to 1st bonus after strike
+        @roll_type = 3							                 # --> to 1st bonus after strike
         @pins_remaining = 10
       elsif @pins_remaining == 0
         score_progress(@frame_no - 1)
-        @frame_no += 1
-        @pins_remaining = 10 
+        # @frame_no += 1
+        # @pins_remaining = 10 
+        turn_control(player)
       else
         @roll_type = 2
       end
-		
-    elsif @roll_type == 2  
-			
-      if @pins_remaining == 0 and @frame_no == 10    # using pins_rem covers spare and strike here
-        @roll_type = 4							   # spare sends to final (3rd) bonus roll
+		elsif @roll_type == 2  
+		  if @pins_remaining == 0 and @frame_no == 10    # using pins_rem covers spare and strike here
+        @roll_type = 4							                 # spare sends to final (3rd) bonus roll
         @pins_remaining = 10
       else
         score_progress(@frame_no - 1)
-        @frame_no += 1 
-        @roll_type = 1 
-        @pins_remaining = 10 
+        # @frame_no += 1 
+        # @roll_type = 1 
+        # @pins_remaining = 10 
+        turn_control(player)
       end
     end
   end
 end
 
 
-def roll_results(index)						# requires roll method written in terms of @pins_remaining, not pins_hit (which is now local)
+def roll_results(player = 1,type)						
+  
   pins_hit = rand(0..(2 * @pins_remaining))    
   if pins_hit >= @pins_remaining
     pins_hit = @pins_remaining
   end
   @pins_remaining = @pins_remaining - pins_hit
     
-  if index == 0 
+  if type == 0 
     @frame_scores << [pins_hit]   		# math for bonus cases handled in roll method
   else 
     @frame_scores[@frame_no - 1] << pins_hit
   end
   # print "\t", @frame_scores.inspect # for testing
+  
 end
 
 
 # works frame by frame; means never looks forward, also never has to look back >3 frames
-# for now, plan on calling w/in roll as score_progress(@frame_no - 1)
-# 9/22 - working except for 10th frame special cases ( i think )
 #
-#
-def score_progress(i)
+def score_progress(player = 1,i)
   print "\n", @frame_scores[i].inspect
   print "\n\t\t\t", @game_scores.inspect, "\n"
   puts "sp#{i}"
@@ -227,16 +261,13 @@ end
   gamecount = 1
 # perfect = false
 
-until gamecount == 100
-  @roll_type = 1
-  @frame_no = 1
-  @pins_remaining = 10							# deal with multiple players later
-
-  @frame_scores = Array.new
-  @game_scores = Array.new
+until gamecount == 2
+  
+  newgame
+  getplayers
 
   until @frame_no == 11
-    roll	
+    roll(@player)	
   end
   puts
   puts @frame_scores.inspect
