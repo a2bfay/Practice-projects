@@ -1,11 +1,11 @@
 # Bowling simulator for multiple players with skill-weighted random result on each roll
 # [eventual?] Option to score game in progress or after all rolls complete - for now latter disabled
-# [eventual? Options at end to repeat games for stats-checking --> disabled for now
+# [eventual] Options at end to repeat games for stats-checking --> partially in use
 
-# 9/23 score-in-progress finished -- multiplayer working, skill working, formatted
-# THIS VERS:        formatted results output --> happens in score_prog
-#                                             ==> w/ components in getplayers and turn_control as well
-# learned .ljust/.rjust to make work
+# 9/26 score-in-progress finished -- multiplayer working, skill working, formatted
+# THIS VERS:        testing new skill weighting -- best of n picks
+#                   setting up to compare new vs old                              
+# 
 
 #   
 # existing methods: roll, roll_results(called by roll)
@@ -20,13 +20,15 @@
 #                   in general : @frame_scores[i][0] --> @frame_scores[player][frame][roll] -- check
 #                   skill variation -- check
 #                   DECIDED ON : arithmetic rather than exponential approach -- gets to pro level w/ much simpler math
-# PLUS:             formatted output for mult players
+# PLUS:             formatted output for mult players --> happens in score_prog ==> w/ components in getplayers and turn_control as well
+#                   learned .ljust/.rjust to make work
+
 
 # ============================================================================
 
 
 def newgame
-  puts "\n========================================================="
+  # TEMP puts "\n========================================================="
   
   @players = Array.new
   @frame_scores = Array.new
@@ -67,7 +69,7 @@ end
 
 def turn_control(player)
   if player == @players.length
-    puts
+    # TEMP puts
     @frame_no += 1
     @player = 1
   else
@@ -114,11 +116,25 @@ def roll(player)
 end
 
 
-def roll_results(player,type)						
+def roll_results(player,type)
+
   skill = @players[player - 1]
-  skill_limit = (@pins_remaining) + (10 * skill)
-  pins_hit = rand(0..skill_limit)
-  pins_hit = @pins_remaining if pins_hit > @pins_remaining
+
+  if player == 1
+    
+    picks = Array.new
+    (skill + 1).times do 
+      pins = rand(0..@pins_remaining)
+      picks << pins
+      break if pins == @pins_remaining
+    end
+    pins_hit = picks.max
+    # puts picks.inspect
+  else
+    skill_limit = (@pins_remaining) + (10 * skill)
+    pins_hit = rand(0..skill_limit)
+    pins_hit = @pins_remaining if pins_hit > @pins_remaining
+  end
   
   if type == 0 
     @frame_scores[player - 1] << [pins_hit]   		# math for bonus cases handled in roll method
@@ -154,8 +170,8 @@ def score_progress(player,i)
     @game_scores[player - 1] << @game_scores[player - 1][i - 1] + framesum
     # puts "line #{__LINE__} regular addition for frame>=2"
   end
-  print @game_scores[player - 1][i].to_s.rjust(6)
-  print " ", @frame_scores[player - 1][i].inspect.ljust(12)
+  # TEMP print @game_scores[player - 1][i].to_s.rjust(6)
+  # TEMP print " ", @frame_scores[player - 1][i].inspect.ljust(12)
 end
 
 
@@ -253,27 +269,121 @@ def tally_comp(f_ind1,r_ind1,f_ind2,r_ind2,f_ind3,r_ind3)
     end
 end
 
-
-# NOTES HERE TOWARD STATS / COMPARISONS -- SETTING ASIDE FOR BREAK 9/23
-
-
-# @frame_scores = Array.new
-# @game_scores = Array.new
-  gamecount = 1
-# perfect = false
-
-# until gamecount == 2
-  
-  newgame
-  getplayers
-
+def playgame
   until @frame_no == 11
     roll(@player)	
   end
+  # TEMP puts
+end
+
+# _________________________________________________________
+# RUN BASIC GAME
+# newgame
+# getplayers
+# playgame
+
+
+# NOTES HERE TOWARD STATS / COMPARISONS -- back in use 9/25
+
+# _________________________________________________________
+# HEAD TO HEAD WEIGHTING TEST
+# while testing weight system : player 1 always new, rest old
+# use two-player setup to tally wins
+
+# puts "skill to test?"
+# skill = gets.chomp.to_i
+
+# SO FAR -- looks like old system generates higher results, usually beats new
+# new gives much better gradation of skill levels (old, skill 1 avg's ~180)
+# skill 0 averages around 90
+
+(0..15).each do |skill|
+
+  gamecount = 0
+  wins = [0,0,0]
+  pintotal = [0,0]
+  minscores = [300,300]
+  maxscores = [0,0]
+  diff = 0
+
+  until gamecount == 10000 # or diff == 5000
+
+    newgame
+    
+    2.times do
+      @players << skill
+      @frame_scores << []
+      @game_scores << []    
+    end
+
+    playgame
+    gamecount += 1
+    diff = (wins[0] - wins[1]).abs
+    
+    pintotal[0] += @game_scores[0][-1]
+    pintotal[1] += @game_scores[1][-1]
+    
+    if @game_scores[0][-1] < minscores[0]
+      minscores[0] = @game_scores[0][-1]
+    end
+    
+    if @game_scores[1][-1] < minscores[1]
+      minscores[1] = @game_scores[1][-1]
+    end
+    
+    if @game_scores[0][-1] > maxscores[0]
+      maxscores[0] = @game_scores[0][-1]
+    end
+    
+    if @game_scores[1][-1] > maxscores[1]
+      maxscores[1] = @game_scores[1][-1]
+    end
+    
+    wins[2] += 1 if @game_scores[0][-1] == @game_scores[1][-1]
+    wins[0] += 1 if @game_scores[0][-1] > @game_scores[1][-1]  
+    wins[1] += 1 if @game_scores[0][-1] < @game_scores[1][-1]
+        
+  end
+
+  print "#{skill}\t#{gamecount}\t#{wins.inspect}\n"
+  print "\t\t", (pintotal[0] / gamecount), " ", minscores[0], " ", maxscores[0]
+  print "\t\t", (pintotal[1] / gamecount), " ", minscores[1], " ", maxscores[1]
   puts
-  # (0...@players.length).each { |i| puts @frame_scores[i].inspect, @game_scores[i][-1], "\n" }
-  # puts
- 
+  puts
+  
+end
+
+# _________________________________________________________
+# CHECK FREQUENCY OF PERFECT GAME FOR FIXED SKILL LEVEL
+#
+
+
+(0..15).each do |skill|
+  
+  gamecount = 0
+  perfect_games = 0 
+
+  until gamecount == 10 # mil runs take TIME...
+    
+    newgame
+    #getplayers
+    @players << skill
+    @frame_scores << []
+    @game_scores << []    
+    
+    playgame
+    gamecount +=1
+    
+    if @game_scores[0][-1] == 300
+    # puts "perfect game"
+    perfect_games += 1
+    end
+        
+  end
+  print skill, "\t", gamecount, "\t", perfect_games, "\n"
+end
+  
+# _________________________________________________________  
   # SET ASIDE CHECKSUM WHILE FILLING ARRAYS CORRECTLY
   # progtotal = @game_scores[player - 1][-1]
 
