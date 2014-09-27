@@ -306,7 +306,7 @@ end
   maxscores = [0,0]
   diff = 0
 
-  until gamecount == 10000 # or diff == 5000
+  until gamecount == 1000 # or diff == 5000
 
     newgame
     
@@ -323,22 +323,12 @@ end
     pintotal[0] += @game_scores[0][-1]
     pintotal[1] += @game_scores[1][-1]
     
-    if @game_scores[0][-1] < minscores[0]
-      minscores[0] = @game_scores[0][-1]
-    end
-    
-    if @game_scores[1][-1] < minscores[1]
-      minscores[1] = @game_scores[1][-1]
-    end
-    
-    if @game_scores[0][-1] > maxscores[0]
-      maxscores[0] = @game_scores[0][-1]
-    end
-    
-    if @game_scores[1][-1] > maxscores[1]
-      maxscores[1] = @game_scores[1][-1]
-    end
-    
+    minscores[0] = @game_scores[0][-1] if @game_scores[0][-1] < minscores[0]
+    maxscores[0] = @game_scores[0][-1] if @game_scores[0][-1] > maxscores[0]
+        
+    minscores[1] = @game_scores[1][-1] if @game_scores[1][-1] < minscores[1]
+    maxscores[1] = @game_scores[1][-1] if @game_scores[1][-1] > maxscores[1]
+   
     wins[2] += 1 if @game_scores[0][-1] == @game_scores[1][-1]
     wins[0] += 1 if @game_scores[0][-1] > @game_scores[1][-1]  
     wins[1] += 1 if @game_scores[0][-1] < @game_scores[1][-1]
@@ -346,7 +336,7 @@ end
   end
 
   print "#{skill}\t#{gamecount}\t#{wins.inspect}\n"
-  print "\t\t", (pintotal[0] / gamecount), " ", minscores[0], " ", maxscores[0]
+  print "\t\t", (pintotal[0] / gamecount), " ", minscores[0], " ", maxscores[0], "\n"
   print "\t\t", (pintotal[1] / gamecount), " ", minscores[1], " ", maxscores[1]
   puts
   puts
@@ -363,7 +353,7 @@ end
   gamecount = 0
   perfect_games = 0 
 
-  until gamecount == 10 # mil runs take TIME...
+  until gamecount == 1 # mil runs take TIME...
     
     newgame
     #getplayers
