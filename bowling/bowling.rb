@@ -1,17 +1,15 @@
 # Bowling simulator for multiple players with skill-weighted random result on each roll
 # [eventual?] Option to score game in progress or after all rolls complete - for now latter disabled
-# [eventual] Options at end to repeat games for stats-checking --> partially in use
+# Options at end to repeat games for stats-checking
 
 # 9/26 score-in-progress finished -- multiplayer working, skill working, formatted
-# THIS VERS:        testing new skill weighting -- best of n picks
-#                   setting up to compare new vs old                              
-# 
+# THIS VERS:        new skill weighting in place -- best of n picks
+#                   tests for average and perfect games; head-to-head pending
 
-#   
-# existing methods: roll, roll_results(called by roll)
+# existing methods: roll_control, roll_calc(called by roll_control)
 #                   score_progress, update_2prev, update_prev (both called by score_progress)
 #                   score_complete, tally_comp(called by score_complete)
-# added:            newgame, getplayers, turn_control
+# added:            newgame, getplayers, turn_control, playgame
 
 # CHANGES FINISHED: array to store player/skill combinations -- check (simple; no nesting required)
 #                   player number as argument for methods -- check
@@ -19,7 +17,7 @@
 #                   extra nesting/layer to @frame_scores and @game_scores arrays --> with changes to all refs 
 #                   in general : @frame_scores[i][0] --> @frame_scores[player][frame][roll] -- check
 #                   skill variation -- check
-#                   DECIDED ON : arithmetic rather than exponential approach -- gets to pro level w/ much simpler math
+#                     (expanded target replaced by best-of-n)
 # PLUS:             formatted output for mult players --> happens in score_prog ==> w/ components in getplayers and turn_control as well
 #                   learned .ljust/.rjust to make work
 
@@ -28,7 +26,9 @@
 
 
 def newgame
-  # TEMP puts "\n========================================================="
+  unless @stats_mode == true
+    puts "\n========================================================="
+  end
   
   @players = Array.new
   @frame_scores = Array.new
@@ -69,7 +69,7 @@ end
 
 def turn_control(player)
   if player == @players.length
-    # TEMP puts
+    puts unless @stats_mode == true
     @frame_no += 1
     @player = 1
   else
@@ -80,19 +80,27 @@ def turn_control(player)
 end
 
 
-def roll(player)
+def playgame
+  until @frame_no == 11
+    roll_control(@player)	
+  end
+  puts unless @stats_mode == true
+end
+
+
+def roll_control(player)
   if @roll_type == 4					  # for 10th/3rd
-    roll_results(player,2)
+    roll_calc(player,2)
     score_progress(player,@frame_no - 1) 
     turn_control(player)
     
   elsif @roll_type == 3				  # 1st bonus after 10th fr strike; 3rd roll always follows
-    roll_results(player,1)
+    roll_calc(player,1)
     @pins_remaining = 10 if @pins_remaining == 0
     @roll_type = 4              # don't increment frame; always passes to another roll
 
   else
-    roll_results(player,@roll_type - 1)		
+    roll_calc(player,@roll_type - 1)		
     if @roll_type == 1
       if @pins_remaining == 0 and @frame_no == 10    # 10th fr strike
         @roll_type = 3							                 # --> to 1st bonus after strike
@@ -116,28 +124,17 @@ def roll(player)
 end
 
 
-def roll_results(player,type)
-
+def roll_calc(player,type)
   skill = @players[player - 1]
-
-  if player == 1
-    
-    picks = Array.new
-    (skill + 1).times do 
-      pins = rand(0..@pins_remaining)
-      picks << pins
-      break if pins == @pins_remaining
-    end
-    pins_hit = picks.max
-    # puts picks.inspect
-  else
-    skill_limit = (@pins_remaining) + (10 * skill)
-    pins_hit = rand(0..skill_limit)
-    pins_hit = @pins_remaining if pins_hit > @pins_remaining
+  picks = Array.new
+  (skill + 1).times do 
+    pins = rand(0..@pins_remaining)
+    picks << pins
+    break if pins == @pins_remaining
   end
-  
+  pins_hit = picks.max  
   if type == 0 
-    @frame_scores[player - 1] << [pins_hit]   		# math for bonus cases handled in roll method
+    @frame_scores[player - 1] << [pins_hit]   		# bonus math handled in scoring
   else 
     @frame_scores[player - 1][@frame_no - 1] << pins_hit
   end
@@ -170,8 +167,10 @@ def score_progress(player,i)
     @game_scores[player - 1] << @game_scores[player - 1][i - 1] + framesum
     # puts "line #{__LINE__} regular addition for frame>=2"
   end
-  # TEMP print @game_scores[player - 1][i].to_s.rjust(6)
-  # TEMP print " ", @frame_scores[player - 1][i].inspect.ljust(12)
+  unless @stats_mode == true
+    print @game_scores[player - 1][i].to_s.rjust(6)
+    print " ", @frame_scores[player - 1][i].inspect.ljust(12)
+  end
 end
 
 
@@ -269,138 +268,90 @@ def tally_comp(f_ind1,r_ind1,f_ind2,r_ind2,f_ind3,r_ind3)
     end
 end
 
-def playgame
-  until @frame_no == 11
-    roll(@player)	
-  end
-  # TEMP puts
+# ===============================================
+# PLAY MODES:
+#
+
+def single_game
+  newgame
+  getplayers
+  playgame
+  # puts "\nRepeat game with these players?"
+  # repeat = gets.chomp
+  # until repeat.downcase == "n"
+    # curr_players = @players
+    # newgame
+    # @players = curr_players
+    # playgame
+  # end
 end
 
-# _________________________________________________________
-# RUN BASIC GAME
-# newgame
-# getplayers
-# playgame
+single_game
 
 
-# NOTES HERE TOWARD STATS / COMPARISONS -- back in use 9/25
+# ----------------
+# STATS - average score by skill setting
+#
+def average_test(limit)
+  @stats_mode = true    # use to disable gameplay screen output
+  (0..15).each do |skill|
+    gamecount = 0
+    pintotal = 0
+    minscore = 300
+    maxscore = 0
 
-# _________________________________________________________
-# HEAD TO HEAD WEIGHTING TEST
-# while testing weight system : player 1 always new, rest old
-# use two-player setup to tally wins
-
-# puts "skill to test?"
-# skill = gets.chomp.to_i
-
-# SO FAR -- looks like old system generates higher results, usually beats new
-# new gives much better gradation of skill levels (old, skill 1 avg's ~180)
-# skill 0 averages around 90
-
-(0..15).each do |skill|
-
-  gamecount = 0
-  wins = [0,0,0]
-  pintotal = [0,0]
-  minscores = [300,300]
-  maxscores = [0,0]
-  diff = 0
-
-  until gamecount == 1000 # or diff == 5000
-
-    newgame
-    
-    2.times do
+    until gamecount == limit
+      newgame
       @players << skill
       @frame_scores << []
       @game_scores << []    
+
+      playgame
+      gamecount += 1
+      
+      pintotal += @game_scores[0][-1]
+            
+      minscore = @game_scores[0][-1] if @game_scores[0][-1] < minscore
+      maxscore = @game_scores[0][-1] if @game_scores[0][-1] > maxscore
     end
 
-    playgame
-    gamecount += 1
-    diff = (wins[0] - wins[1]).abs
-    
-    pintotal[0] += @game_scores[0][-1]
-    pintotal[1] += @game_scores[1][-1]
-    
-    minscores[0] = @game_scores[0][-1] if @game_scores[0][-1] < minscores[0]
-    maxscores[0] = @game_scores[0][-1] if @game_scores[0][-1] > maxscores[0]
-        
-    minscores[1] = @game_scores[1][-1] if @game_scores[1][-1] < minscores[1]
-    maxscores[1] = @game_scores[1][-1] if @game_scores[1][-1] > maxscores[1]
-   
-    wins[2] += 1 if @game_scores[0][-1] == @game_scores[1][-1]
-    wins[0] += 1 if @game_scores[0][-1] > @game_scores[1][-1]  
-    wins[1] += 1 if @game_scores[0][-1] < @game_scores[1][-1]
-        
+    print "#{skill}\t#{gamecount}\tavg"
+    print "#{(pintotal / gamecount)}".rjust(4), "#{minscore}/#{maxscore}".rjust(9), "\n"
+    puts
   end
-
-  print "#{skill}\t#{gamecount}\t#{wins.inspect}\n"
-  print "\t\t", (pintotal[0] / gamecount), " ", minscores[0], " ", maxscores[0], "\n"
-  print "\t\t", (pintotal[1] / gamecount), " ", minscores[1], " ", maxscores[1]
-  puts
-  puts
-  
+  @stats_mode = false
 end
 
-# _________________________________________________________
-# CHECK FREQUENCY OF PERFECT GAME FOR FIXED SKILL LEVEL
+
+average_test(10)
+
+# ----------------
+# STATS - frequency of perfect game by skill
 #
-
-
-(0..15).each do |skill|
+def perfect_test(limit)
+  @stats_mode = true
   
-  gamecount = 0
-  perfect_games = 0 
-
-  until gamecount == 1 # mil runs take TIME...
-    
-    newgame
-    #getplayers
-    @players << skill
-    @frame_scores << []
-    @game_scores << []    
-    
-    playgame
-    gamecount +=1
-    
-    if @game_scores[0][-1] == 300
-    # puts "perfect game"
-    perfect_games += 1
+  (0..15).each do |skill|
+    gamecount = 0
+    perfect_games = 0 
+    until gamecount == limit
+      newgame
+      @players << skill
+      @frame_scores << []
+      @game_scores << []    
+      playgame
+      gamecount +=1      
+      perfect_games += 1 if @game_scores[0][-1] == 300  
     end
-        
+    print skill, "\t", gamecount, "\t", perfect_games, "\n"
   end
-  print skill, "\t", gamecount, "\t", perfect_games, "\n"
+  @stats_mode = false
 end
-  
-# _________________________________________________________  
-  # SET ASIDE CHECKSUM WHILE FILLING ARRAYS CORRECTLY
-  # progtotal = @game_scores[player - 1][-1]
 
-  # @game_scores = Array.new    # reset for second method
+perfect_test(10)
 
-  # 10.times do |i| 
-  # # puts i		# yes, from 0 to 9
-	# score_complete(i) 
-    # print @frame_scores[player - 1][i].inspect, "\t", @game_scores[player - 1][i].inspect, "\t", @game_scores[player - 1][-1].inspect, "\n"
-  # end
 
-  # checksum = progtotal - @game_scores[player - 1][-1]
-  # puts 
-  # puts checksum
-  
-# if @game_scores[-1] == 300		# um, don't run in this form unless you mean it
-#   perfect = true
-# end
-
- # gamecount += 1
- # puts gamecount
-# @frame_scores = Array.new
-# @game_scores = Array.new
-# @roll_type = 1
-# @frame_no = 1
-# @pins_remaining = 10
-# end
-
-# puts "games required = #{gamecount}"	
-# end
+# ----------------
+# STATS - head-to-head wins by skill level
+def win_freq_test(limit,p1,p2)
+end
