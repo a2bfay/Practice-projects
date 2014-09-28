@@ -52,7 +52,7 @@ def getplayers
     print "Skill level for player #{p}?  "
       skill = gets.chomp.to_i
       skill = 0 if skill < 0
-      skill = 10 if skill > 10
+      #skill = 10 if skill > 10
     @players << skill
     @frame_scores << []
     @game_scores << []    
@@ -353,5 +353,29 @@ perfect_test(10)
 
 # ----------------
 # STATS - head-to-head wins by skill level
-def win_freq_test(limit,p1,p2)
+def win_freq_test(limit = 1,skill1 = 0,skill2 = 0)
+  @stats_mode = true
+  wins = [0,0,0]
+  gamecount = 0
+  until gamecount == limit
+    newgame
+    @players << skill1
+    @players << skill2
+    2.times { @frame_scores << [] }
+    2.times { @game_scores << [] }
+    playgame
+    puts @game_scores[0][-1], @game_scores[1][-1]
+    wins[0] += 1 if @game_scores[0][-1] > @game_scores[1][-1]
+    wins[1] += 1 if @game_scores[0][-1] < @game_scores[1][-1]
+    wins[2] += 1 if @game_scores[0][-1] == @game_scores[1][-1]
+    gamecount += 1
+  end
+  puts @players.inspect
+  puts wins.inspect
+  @stats_mode = false
 end
+
+win_freq_test 
+#
+# from first runs it looks like +1skill wins most at low skills; as increases,
+# players increasingly even match
