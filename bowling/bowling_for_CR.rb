@@ -40,7 +40,8 @@ def get_skill(numplayers)
   end
 end
 
-
+# prepares nested arrays to be filled during gameplay/scoring
+#
 def reset_arrays
   @players.length.times do
       @frame_scores << []
@@ -84,15 +85,17 @@ def roll_control(player)
     roll_calc(player,1)
     score_progress(player,@frame_no - 1) 
     turn_control(player)    
+
   elsif @roll_type == 3				  # 1st bonus after 10th fr strike -> to 3rd roll
     roll_calc(player,1)
     @pins_remaining = 10 if @pins_remaining == 0
     @roll_type = 4              
+
   else
     roll_calc(player,@roll_type - 1)		
     
     if @roll_type == 1          # regular first roll
-      if @pins_remaining == 0 and @frame_no == 10    # 10th fr strike
+      if @pins_remaining == 0 and @frame_no == 10
         @roll_type = 3							                 
         @pins_remaining = 10
       elsif @pins_remaining == 0
@@ -123,11 +126,13 @@ def roll_calc(player,type)
     break if pins == @pins_remaining
   end
   pins_hit = picks.max  
+  
   if type == 0 
     @frame_scores[player - 1] << [pins_hit]
   else 
     @frame_scores[player - 1][@frame_no - 1] << pins_hit
   end
+
   @pins_remaining = @pins_remaining - pins_hit
 end
 
@@ -136,7 +141,7 @@ end
 # SCORING METHODS
 # "i" in next 3 methods is array index of current frame (so @frame_no - 1)
 #   should be more descriptive, but lines are already too long --
-#   best to create variables for array values being summed, then add? 
+#   better to create variables for array values being summed, then add? 
 #
 
 def score_progress(player,i)
