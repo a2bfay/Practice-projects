@@ -2,14 +2,15 @@
 # [eventual?] Option to score game in progress or after all rolls complete - for now latter disabled
 # Options at end to repeat games for stats-checking
 
-# 9/26 score-in-progress finished -- multiplayer working, skill working, formatted
-# THIS VERS:        new skill weighting in place -- best of n picks
-#                   tests for average and perfect games; head-to-head pending
+# 10/1 score-in-progress finished -- multiplayer working, best-of-n skill working, tests working, formatted
+# THIS VERS:        separated out tasks for shorter/more methods --> haven't tackled class yet
 
 # existing methods: roll_control, roll_calc(called by roll_control)
 #                   score_progress, update_2prev, update_prev (both called by score_progress)
-#                   score_complete, tally_comp(called by score_complete)
-# added:            newgame, getplayers, turn_control, playgame
+#                   score_complete, tally_comp(called by score_complete) --> not in use
+# added:            newgame, get_players, turn_control, playgame
+#                   get_skill, reset_arrays, print_players, average_test, perfect_test, upset_test
+#                   stats_tests, repeat_check, single_game
 
 # CHANGES FINISHED: array to store player/skill combinations -- check (simple; no nesting required)
 #                   player number as argument for methods -- check
@@ -18,17 +19,21 @@
 #                   in general : @frame_scores[i][0] --> @frame_scores[player][frame][roll] -- check
 #                   skill variation -- check
 #                     (expanded target replaced by best-of-n)
-# PLUS:             formatted output for mult players --> happens in score_prog ==> w/ components in getplayers and turn_control as well
+# PLUS:             formatted output for mult players --> happens in score_prog ==> w/ components in get_players and turn_control as well
 #                   learned .ljust/.rjust to make work
 
 
 # ============================================================================
 
 
+# ===============================================
+# GAME MECHANICS
+#
+
 def newgame
-  unless @stats_mode == true
-    puts "\n========================================================="
-  end
+  # unless @stats_mode == true
+    # puts "\n========================================================="
+  # end
   
   @players = Array.new
   @frame_scores = Array.new
@@ -41,29 +46,50 @@ def newgame
 end
   
   
-def getplayers
+def get_players
   print "How many players(1-4)?  "
     numplayers = gets.chomp.to_i
     numplayers = 1 if numplayers < 1
     numplayers = 4 if numplayers > 4
-  
-  puts "Enter skill level 0-10 (1 = good, 2 = v.good, 3+ = pro):"
+  get_skill(numplayers)
+  reset_arrays
+  print_players
+end
+
+
+def get_skill(numplayers)
+  puts "Enter skill level 0-15 (2+ = good, 4+ = v.good, 6+ = pro):"
   (1..numplayers).each do |p|
     print "Skill level for player #{p}?  "
-      skill = gets.chomp.to_i
-      skill = 0 if skill < 0
-      #skill = 10 if skill > 10
+    skill = gets.chomp.to_i
+    skill = 0 if skill < 0
     @players << skill
-    @frame_scores << []
-    @game_scores << []    
   end
+end
 
+
+def reset_arrays
+  @players.length.times do
+      @frame_scores << []
+      @game_scores << []    
+  end
+end
+
+
+def print_players
   puts
-  (1..numplayers).each do |p|
+  (1..@players.length).each do |p|
     print "P#{p}(#{@players[p - 1]})".rjust(7), "___________ "
   end
   puts
-  # print @players.inspect, @frame_scores.inspect, @game_scores.inspect   # for testing
+end
+
+
+def playgame
+  until @frame_no == 11
+    roll_control(@player)	
+  end
+  puts unless @stats_mode == true
 end
 
 
@@ -77,14 +103,6 @@ def turn_control(player)
   end
   @roll_type = 1 
   @pins_remaining = 10 
-end
-
-
-def playgame
-  until @frame_no == 11
-    roll_control(@player)	
-  end
-  puts unless @stats_mode == true
 end
 
 
@@ -268,32 +286,15 @@ def tally_comp(f_ind1,r_ind1,f_ind2,r_ind2,f_ind3,r_ind3)
     end
 end
 
+
+
 # ===============================================
-# PLAY MODES:
+# STATS TESTS
 #
 
-def single_game
-  newgame
-  getplayers
-  playgame
-  # puts "\nRepeat game with these players?"
-  # repeat = gets.chomp
-  # until repeat.downcase == "n"
-    # curr_players = @players
-    # newgame
-    # @players = curr_players
-    # playgame
-  # end
-end
-
-single_game
-
-
-# ----------------
-# STATS - average score by skill setting
+# average score by skill setting
 #
 def average_test(limit)
-  @stats_mode = true    # use to disable gameplay screen output
   (0..15).each do |skill|
     gamecount = 0
     pintotal = 0
@@ -303,12 +304,9 @@ def average_test(limit)
     until gamecount == limit
       newgame
       @players << skill
-      @frame_scores << []
-      @game_scores << []    
-
+      reset_arrays
       playgame
       gamecount += 1
-      
       pintotal += @game_scores[0][-1]
             
       minscore = @game_scores[0][-1] if @game_scores[0][-1] < minscore
@@ -319,63 +317,93 @@ def average_test(limit)
     print "#{(pintotal / gamecount)}".rjust(4), "#{minscore}/#{maxscore}".rjust(9), "\n"
     puts
   end
-  @stats_mode = false
 end
 
 
-average_test(10)
-
-# ----------------
-# STATS - frequency of perfect game by skill
+# frequency of perfect game by skill setting
 #
 def perfect_test(limit)
-  @stats_mode = true
-  
   (0..15).each do |skill|
     gamecount = 0
     perfect_games = 0 
     until gamecount == limit
       newgame
       @players << skill
-      @frame_scores << []
-      @game_scores << []    
+      reset_arrays
       playgame
       gamecount +=1      
       perfect_games += 1 if @game_scores[0][-1] == 300  
     end
     print skill, "\t", gamecount, "\t", perfect_games, "\n"
   end
-  @stats_mode = false
 end
 
-perfect_test(10)
 
-
-# ----------------
-# STATS - head-to-head wins by skill level
-def win_freq_test(limit = 1,skill1 = 0,skill2 = 0)
-  @stats_mode = true
-  wins = [0,0,0]
-  gamecount = 0
-  until gamecount == limit
-    newgame
-    @players << skill1
-    @players << skill2
-    2.times { @frame_scores << [] }
-    2.times { @game_scores << [] }
-    playgame
-    puts @game_scores[0][-1], @game_scores[1][-1]
-    wins[0] += 1 if @game_scores[0][-1] > @game_scores[1][-1]
-    wins[1] += 1 if @game_scores[0][-1] < @game_scores[1][-1]
-    wins[2] += 1 if @game_scores[0][-1] == @game_scores[1][-1]
-    gamecount += 1
-  end
-  puts @players.inspect
-  puts wins.inspect
-  @stats_mode = false
-end
-
-win_freq_test 
+# head-to-head wins for consecutive skill levels
+# diff greatest at low skill - approach 50/50 at high)
 #
-# from first runs it looks like +1skill wins most at low skills; as increases,
-# players increasingly even match
+def upset_test(limit = 1)
+  puts
+  (0..14).each do |skill|
+    wins = [0,0,0]
+    gamecount = 0
+    until gamecount == limit
+      newgame
+      @players << skill
+      @players << (skill + 1)
+      reset_arrays
+      playgame
+      wins[0] += 1 if @game_scores[0][-1] > @game_scores[1][-1]
+      wins[1] += 1 if @game_scores[0][-1] < @game_scores[1][-1]
+      wins[2] += 1 if @game_scores[0][-1] == @game_scores[1][-1]
+      gamecount += 1
+    end
+    print @players.inspect.rjust(8), "   ", wins.inspect, "\n"
+  end
+end
+
+
+# ===============================================
+# PLAY MODES:
+#
+def stats_tests(limit)
+  @stats_mode = true    # use to disable gameplay screen output
+  puts
+  average_test(limit)
+  perfect_test(limit)
+  upset_test(limit)  
+end
+
+
+def repeat_check
+  puts "\nRepeat game with these players (y/n/stats/quit)?"
+  repeat = gets.chomp.downcase
+  if repeat == "stats"
+    print "Number of games per test?  "
+    limit = gets.chomp.to_i
+    stats_tests(limit)
+  elsif repeat == "n"
+    single_game
+  elsif repeat == "y"
+    curr_players = @players
+    newgame
+    @players = curr_players
+    reset_arrays
+    print_players
+    playgame
+    repeat_check
+  else
+    return
+  end  
+end
+
+
+def single_game
+  newgame
+  get_players
+  playgame
+  repeat_check
+end
+
+
+single_game
