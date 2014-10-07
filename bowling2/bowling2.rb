@@ -48,8 +48,12 @@ class Roll
   def initialize(pins_standing = 10)  #add player skill here later?
     @pins_standing = pins_standing    
     @result = rand(0..pins_standing)
+    # will want option for player skill here
   end
 
+  # def weighted_roll
+  # end
+  
   def strike?
     result == 10
   end
