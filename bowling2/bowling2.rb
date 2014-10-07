@@ -1,16 +1,6 @@
 # METZ:
-#
-# "It depends upon the array’s structure. If that structure changes, then this 
-# code must change. When you have data in an array it’s not long before you 
-# have references to the array’s structure all over. The references are leaky. 
-# They escape encapsulation and insinuate themselves throughout the code. They
-# are not DRY. The knowledge that rims are at [0] should not be duplicated; 
-# it should be known in just one place."
-#
-#   (wheel.rim + wheel.tire instead of wheel[0] + wheel[1])
-# "these few lines of code are a minor inconvenience compared
-# to the permanent cost of repeatedly indexing into a complex array"
-#
+# "The knowledge that rims are at [0] should not be duplicated; it should be known in just one place."
+# "these few lines of code are a minor inconvenience compared to the permanent cost of repeatedly indexing into a complex array"
 # "If you rephrase every one of [a class's] methods as a question, asking the question ought to make sense."
 
 # BOWLING SIMULATOR WITH SCORING DONE FRAME-BY-FRAME (vs. 'kata' version)
@@ -26,18 +16,20 @@
 #   player / (only need if skill or if multiple? not sure)
 #   game / directs turns/games and evaluate scores/winners
 
+# crux of trouble so far:  a LANE_GAME is built out of turns, but a PLAYER_GAME is built out of consecutive frames, w/ scores
+# should frame data get stored in PLAYER?  that would require TURN to distribute FRAMES among PLAYERS
+
+# ---- MESSAGES ----
+# who's playing?
+# what frame are we in?
+# whose turn is it?
+# what roll result/frame result? --> how good is player?
+# what's the current score? --> who's the current leader?
+# is the game over?
+# who won?
+
+
 puts; puts
-
-
-class Player
-  attr_reader :player_num, :skill
-  @@players = 0
-  def initialize(skill = 0)
-    @skill = skill
-    @@players += 1
-    @player_num = @@players
-  end  
-end
 
 
 # ---------------------------------------------------------
@@ -45,21 +37,178 @@ end
 class Roll
   attr_reader :result  
 
-  def initialize(pins_standing = 10)  #add player skill here later?
-    @pins_standing = pins_standing    
-    @result = rand(0..pins_standing)
-    # will want option for player skill here
+  def initialize(skill = 0, pins_standing = 10)  #add player skill here later?
+    raise RangeError unless skill >= 0
+    @skill = skill
+    @pins_standing = pins_standing   
+    @result = weighted_roll
   end
-
-  # def weighted_roll
-  # end
   
-  def strike?
-    result == 10
+  private
+  def weighted_roll
+    picks = []
+    (@skill + 1).times do 
+      pins = rand(0..@pins_standing)
+      picks << pins
+      break if pins == @pins_standing
+    end
+    picks.max
   end
 end
 
 
+# ---------------------------------------------------------
+# stores a set of rolls in an array
+# METZ: "Gear no longer cares about the class of the injected object, it merely expects that it implement diameter."
+# problem here that calling for new objects explicitly --> how to 'inject' while preserving unless case?
+# i.e. if Frame doesn't know how many rolls should 
+class Frame
+  attr_accessor :results
+ 
+  def initialize(skill)
+    first_roll = Roll.new(skill).result
+    @results = [first_roll]
+    remaining = 10 - first_roll
+    @results << Roll.new(skill, remaining).result unless first_roll == 10
+  end
+  
+  def total
+    @results.reduce(:+)
+  end
+
+  def strike?
+    @results[0] == 10
+  end
+  
+  def spare?
+    strike? == false && total == 10
+  end
+end
+# 10th frame with [10, 0, 10] and [10, 0, 0] will be good test cases...
+class FrameTen < Frame  # a full, unique frame might not be best way to handle this...save for now
+    
+  def spare?  # good for testing override; but would this ever be necessary?
+    strike? == false && (@frame[0] + @frame[1]) == 10
+  end
+end
+
+
+class Player
+  attr_reader :skill, :frames
+  
+  def initialize(skill = 0)
+    @skill = skill
+    @frames = []
+    @scores = []
+  end
+  
+  def bowl
+    player_frame = Frame.new(@skill).results
+    @frames << player_frame
+  end
+end
+
+
+class Turn
+  def initialize(players)
+    @players = players
+    @players.each { |player| player.bowl }
+    @players.each { |player| puts player.frames.inspect }
+    puts
+  end
+end
+
+
+class Game
+  attr_reader :players # :winner
+  
+  def initialize(num_players)
+    @players = []
+    num_players.times { @players << Player.new }
+  end
+  
+  def play_game
+    10.times { Turn.new(@players) }
+  end
+end
+
+
+puts "bob"
+bob = Player.new
+bob.bowl
+puts bob.frames.inspect
+9.times { bob.bowl }
+puts bob.frames.inspect
+
+puts "turns"
+alpha = Player.new
+beta = Player.new
+10.times do 
+  turn = Turn.new [alpha, beta]
+end
+
+puts "test game"
+test_game = Game.new(3)
+test_game.play_game
+
+
+
+# ===================================================================================================================================================================
+# METZ "test everything just once and in the proper place"
+require "test/unit"
+class TestRoll < Test::Unit::TestCase
+
+  def test_roll
+    roll = Roll.new
+    assert ( roll.result >= 0 && roll.result <= 10 )
+  end
+  
+  def test_roll_skill
+    skill = rand(1..15)
+    roll = Roll.new(skill)
+    assert ( roll.result >= 0 && roll.result <= 10 )
+  end
+  
+  def test_roll_valid_skill
+    skill = -2
+    assert_raise (RangeError) { roll = Roll.new(skill) }
+  end
+end
+
+
+class TestFrame < Test::Unit::TestCase
+  
+  def test_frame
+    frame = Frame.new(0)
+    assert frame.results.is_a? Array
+    assert frame.results.length >= 1 && frame.results.length <= 2
+    assert frame.total >= 0 && frame.total <= 10
+  end
+  
+  def test_frame_skill
+    skill = rand(1..15)
+    frame = Frame.new(skill)
+    assert frame.results.is_a? Array
+    assert frame.results.length >= 1 && frame.results.length <= 2
+    assert frame.total >= 0 && frame.total <= 10
+  end
+  
+  def test_frame_strike
+    frame = Frame.new(0)
+    frame.results = [10]    # this requires accessor inside class, which seems like a problem
+    assert frame.strike?      # or else is this the wrong place to have that method?
+  end
+  
+  def test_frame_spare
+    frame = Frame.new(0)
+    frame.results = [2, 8]    # this requires accessor inside class, which seems like a problem
+    assert frame.spare?
+  end
+end
+
+
+
+# for understanding structure of object
 def roll_tests_temp
   puts "roll_tests line #{__LINE__}"
   roll1 = Roll.new
@@ -69,117 +218,4 @@ def roll_tests_temp
   puts "this is result of new object saved to var: #{roll2}"
   puts
 end
-# roll_tests_temp
 
-
-# ---------------------------------------------------------
-# enacts set of rolls? or is that not object behavior?
-#   what QUESTIONS to ask? 1) what are the rolls for this turn?
-#   think that's it -- always completes (10th aside), so likely no need to check; on multiplayer level instead?
-class PlayerTurn
-  attr_reader :rolls
- 
-  def initialize
-    first_roll = Roll.new.result
-    @rolls = [first_roll]
-    remaining = 10 - first_roll
-    @rolls << Roll.new(remaining).result unless first_roll == 10
-  end
-end
-
-
-# ---------------------------------------------------------
-# stores a set of rolls in an array
-class Frame
-  attr_reader :frame
-  
-  def initialize(rolls)
-    @frame = rolls.compact
-  end
-  
-  def total
-    @frame.reduce(:+)
-  end
-
-  def strike?
-    @frame[0] == 10
-  end
-  
-  def spare?
-    strike? == false && total == 10
-  end
-end
-# 10th frame with [10, 0, 10] and [10, 0, 0] are good test cases...
-
-
-class FrameTen < Frame  # a full, unique frame might not be best way to handle this...save for now
-    
-  def spare?  # good for testing override; but would this ever be necessary?
-    strike? == false && (@frame[0] + @frame[1]) == 10
-  end
-end
-
-
-def frame_tests_temp
-  # frame_nil = Frame.new  # doesn't work; treat as error w/in class?
-  # puts frame_nil.frame.inspect  # valid - may need to be changed
-  # puts
-  
-  frame0 = Frame.new [3, 6]
-  puts frame0.inspect, frame0.frame.inspect
-  puts frame0.total
-  puts "spare / #{frame0.spare?}"
-  puts "strike / #{frame0.strike?}"
-  puts
-
-  frame1 = Frame.new [9, 1]
-  puts frame1.inspect, frame1.frame.inspect
-  puts frame1.total
-  puts "spare / #{frame1.spare?}"
-  puts "strike / #{frame1.strike?}"
-  puts
-
-  frame2 = Frame.new [10]
-  puts frame2.inspect, frame2.frame.inspect
-  puts frame2.total
-  puts "spare / #{frame2.spare?}"
-  puts "strike / #{frame2.strike?}"
-  puts
-
-  frame3 = Frame.new [2, 8, 10]
-  puts frame3.inspect, frame3.frame.inspect
-  puts frame3.total
-  puts "spare / #{frame3.spare?}"
-  puts "strike / #{frame3.strike?}"
-  puts
-
-  frame10 = FrameTen.new [2, 8, 10]
-  puts frame10.inspect, frame10.frame.inspect
-  puts frame10.total
-  puts "spare / #{frame10.spare?}"
-  puts "strike / #{frame10.strike?}"
-  puts
-end
-# frame_tests_temp   # hard coded - no interaction with other classes
-
-
-# =============================================================================
-def frame_from_turn_tests_temp
-  puts "frame_from_turn_tests line #{__LINE__}"
-  turn_test = PlayerTurn.new
-  puts "#{turn_test} : this is object", turn_test.inspect
-  puts turn_test.rolls.inspect
-
-  frame_from_turn = Frame.new(turn_test.rolls)
-  puts frame_from_turn.frame.inspect
-end
-frame_from_turn_tests_temp
-
-
-# okay, so : are we thinking about a multiplayer game made up of turns (each with several players)
-#   or a multiplayer game made up of individual games played in parallel?
-# or for one player....
-# some class variables as counters useful here?
-class Game
-
-end
