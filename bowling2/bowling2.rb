@@ -55,15 +55,21 @@ class Roll
     picks.max
   end
 end
+# BECAUSE UNIT-TESTING CURRENT VERSION OF FRAME IS TRICKY:
+# am I sure sure that roll is a class? because for now roll doesn't 'implement new_roll', it implements *result* -- which isn't really implementing anything
+# should it be Lane? or Roller? so that instead of Roll.new.result (where result is just a reader),
+# you would inject Roller.new, and expect it to implement roll and roll(pins)?
+# except at that point, Roller sounds an awful lot like what you'd call a "frame" in actual bowling --
+# its data consists of pins, and its behavior consists of hitting/counting them
 
 
 # ---------------------------------------------------------
 # stores a set of rolls in an array
 # METZ: "Gear no longer cares about the class of the injected object, it merely expects that it implement diameter."
-# problem here that calling for new objects explicitly --> how to 'inject' while preserving unless case?
+# problem here that calling for new objects explicitly --> how to 'inject' while preserving 'unless' case?
 # i.e. if Frame doesn't know how many rolls should 
 class Frame
-  attr_accessor :results
+  attr_accessor :results  # need like this to rig frames for testing -- seems like a problem
  
   def initialize(skill)
     first_roll = Roll.new(skill).result
@@ -91,6 +97,72 @@ class FrameTen < Frame  # a full, unique frame might not be best way to handle t
     strike? == false && (@frame[0] + @frame[1]) == 10
   end
 end
+
+
+class FrameIncludingRolls
+  attr_reader :results   # will this be necessary?  maybe just to pass array up a level...
+ 
+  def initialize(skill = 0)
+    raise RangeError unless skill >= 0
+    @skill = skill
+    @roll = 1
+    @pins_standing = 10
+    @results = []
+    weighted_roll(@pins_standing)
+  end
+
+  def first_roll
+    @results[0]
+  end
+  
+  def second_roll
+    @results[1] unless @results.length == 1
+  end
+    
+  def total
+    @results.reduce(:+)
+  end
+
+  def strike?
+    @results[0] == 10
+  end
+  
+  def spare?
+    strike? == false && total == 10
+  end
+
+  private
+  
+  def weighted_roll(pins)
+    picks = []
+    (@skill + 1).times do 
+      pick = rand(0..pins)
+      picks << pick
+      break if pick == pins
+    end
+    pins_hit = picks.max
+    @results << pins_hit
+    @roll += 1
+    @pins_standing -= pins_hit
+    weighted_roll(@pins_standing) unless pins_hit == 10 || @roll > 2
+  end
+end
+
+
+20.times do
+  puts "FrameIncludingRolls"
+  test_FIR = FrameIncludingRolls.new
+  puts test_FIR.inspect
+  puts test_FIR.results.inspect
+  puts test_FIR.first_roll
+  puts test_FIR.second_roll           # no error, just blank
+  puts test_FIR.second_roll.inspect   # yes, nil
+  puts test_FIR.total
+  puts test_FIR.strike?
+  puts test_FIR.spare?
+  puts
+end
+
 
 
 class Player
@@ -133,23 +205,23 @@ class Game
 end
 
 
-puts "bob"
-bob = Player.new
-bob.bowl
-puts bob.frames.inspect
-9.times { bob.bowl }
-puts bob.frames.inspect
+# puts "bob"
+# bob = Player.new
+# bob.bowl
+# puts bob.frames.inspect
+# 9.times { bob.bowl }
+# puts bob.frames.inspect
 
-puts "turns"
-alpha = Player.new
-beta = Player.new
-10.times do 
-  turn = Turn.new [alpha, beta]
-end
+# puts "turns"
+# alpha = Player.new
+# beta = Player.new
+# 10.times do 
+  # turn = Turn.new [alpha, beta]
+# end
 
-puts "test game"
-test_game = Game.new(3)
-test_game.play_game
+# puts "test game"
+# test_game = Game.new(3)
+# test_game.play_game
 
 
 
