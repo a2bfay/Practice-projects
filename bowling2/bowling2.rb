@@ -38,7 +38,7 @@
 #                       but tests busted and will need double to get working
 #                       also need to rework Player as a result...
 # --> second revision - DOUBLES CREATED/TESTS WORKING
-#
+#                       
 
   
 # ================================================================================
@@ -51,7 +51,6 @@ puts; puts
 # returns up to two weighted random rolls from 10 initial pins
 class RollCalc
   attr_reader :results  
-
   def initialize(skill = 0)  #add player skill here later?
     raise RangeError unless skill >= 0
     @skill = skill
@@ -61,8 +60,7 @@ class RollCalc
     weighted_roll(@pins_standing)
   end
   
-  private
-  
+  private  
   def weighted_roll(pins)
     picks = []
     (@skill + 1).times do 
@@ -77,12 +75,12 @@ class RollCalc
     weighted_roll(@pins_standing) unless pins_hit == 10 || @roll_no > 2
   end
   
-# BECAUSE UNIT-TESTING CURRENT VERSION OF FRAME IS TRICKY:
-# am I sure sure that roll is a class? because for now roll doesn't 'implement new_roll', it implements *result* -- which isn't really implementing anything
-# should it be Lane? or Roller? so that instead of Roll.new.result (where result is just a reader),
-# you would inject Roller.new, and expect it to implement roll and roll(pins)?
-# except at that point, Roller sounds an awful lot like what you'd call a "frame" in actual bowling --
-# its data consists of pins, and its behavior consists of hitting/counting them
+  # BECAUSE UNIT-TESTING CURRENT VERSION OF FRAME IS TRICKY: --> see changes 10/8
+    # am I sure sure that roll is a class? because for now roll doesn't 'implement new_roll', it implements *result* -- which isn't really implementing anything
+    # should it be Lane? or Roller? so that instead of Roll.new.result (where result is just a reader),
+    # you would inject Roller.new, and expect it to implement roll and roll(pins)?
+    # except at that point, Roller sounds an awful lot like what you'd call a "frame" in actual bowling --
+    # its data consists of pins, and its behavior consists of hitting/counting them
  end
 
 def temp_roll_output_test 
@@ -94,15 +92,16 @@ end
 temp_roll_output_test
 
 
+
 # METZ: "Gear no longer cares about the class of the injected object, it merely expects that it implement diameter."
 # ---------------------------------------------------------
-# stores a set of rolls in an array
+# stores/evalutes set of rolls
 class Frame
   attr_reader :results             # trying to avoid accessor
  
   def initialize(roll_calc)
-    @results = roll_calc.results   # so this should be an actual injection; no longer knows class, just response
-  end                              # but means double may be necessary for test
+    @results = roll_calc.results   # so this is an actual injection; no longer knows class, just response
+  end                              # but means doubles are be necessary for tests
   
   def first_roll
     @results[0]
@@ -133,10 +132,12 @@ class FrameTen < Frame  # a full, unique frame might not be best way to handle t
 end
 
 
+
+# now defunct. temporarility saving for comparison to _NEW
 def temp_frame_tests_OLD
   2.times do
     puts "Frame Skill 0"
-    test_fr = Frame.new ( RollCalc.new.results ) # here i'm passing in the OUTPUT. if you write so you're passing in the actual calcuator, how do you test?
+    test_fr = Frame.new ( RollCalc.new.results ) # here i'm passing in the OUTPUT. if you write so you're passing in the actual calcuator, how do you test? --> DOUBLES
     puts test_fr.inspect
     puts test_fr.results.inspect
     puts test_fr.first_roll
@@ -162,10 +163,9 @@ def temp_frame_tests_OLD
     puts
   end
 end
-#temp_frame_tests_OLD
 
 
-# this works fine but screws up existing tests --> are those going to require doubles (that respond to .results)?
+
 def temp_frame_tests_NEW
   2.times do
     puts "Frame Skill 0"
@@ -198,42 +198,85 @@ end
 temp_frame_tests_NEW
 
 
-# class Player
-  # attr_reader :skill, :frames
-  
-  # def initialize(skill = 0)
-    # @skill = skill
-    # @frames = []
-    # @scores = []
-  # end
-  
-  # def bowl
-    # player_frame = Frame.new ( RollCalc.new(@skill).results )   # have to pass results, not object
-    # puts "* #{player_frame.results}"
-    # @frames << player_frame.results
-  # end
-# end
 
-# you = Player.new
-# me = Player.new 5
-# 3.times do 
-  # you.bowl
-  # puts you.frames.inspect
-  # me.bowl
-  # puts me.frames.inspect
-# end
-
-
-class Turn
+class GameTurn
   def initialize(players)
     @players = players
-    @players.each { |player| player.bowl }
-    @players.each { |player| puts player.frames.inspect }
-    puts
+    @players.each { |player| player.take_turn }
+      @players.each { |player| puts player.frames_played.inspect }  # temp
+      puts
   end
 end
 
 
+
+# injection seems weird here. think of methods as /questions/
+class Player
+  attr_reader :skill, :frames
+  
+  def initialize(skill = 0) # will want to inject scoring object as well
+    @skill = skill
+    @frames = []
+    @scores = []
+  end
+  
+  def take_turn
+    bowl
+    score_turn
+  end
+
+  def frame(num)
+    @frames[num - 1]
+  end
+
+  def frame_results(num)
+    frame(num).results
+  end
+  
+  def frames_played
+    @frames.map { |fr| fr.results }
+  end
+    
+  private
+   
+  def bowl
+    player_frame = Frame.new ( RollCalc.new(@skill) )   # pass object as argument, not results
+    @frames << player_frame                               # do the same here? --> YES. makes Frame methods available elsewhere
+  end
+  
+  def score_turn
+    # create new scoring window, sending it up to last 3 frames
+  end
+end
+
+
+# guide to screen output when player's @frames is an array of Frame *objects* (not just result arrays)
+def player_tests_temp
+  you = Player.new
+  me = Player.new 5
+  3.times { you.take_turn; puts you.frames.inspect }   # can't simply drop frames.results.inspect in here
+  3.times { me.take_turn; puts me.frames.inspect }
+  puts
+  # +1's below only because using single iterator (might otherwise be array index vs. frame no)
+  (0..2).each do |i| 
+    puts "*"
+    puts me.frames[i].inspect             # v
+    puts me.frame(i + 1)                  # this and above are almost equivalent (this line doesn't include @results
+    puts me.frames[i].results.inspect     # this and both below are exactly equivalent
+    puts me.frame(i + 1).results.inspect  # ^
+    puts me.frame_results(i + 1).inspect  # ^
+    puts me.frames[i].strike?
+    puts me.frames[i].spare?
+    puts "*"
+    puts " #{me.frames_played}"
+    puts me.frames_played                 # ok, funny: top line works just like .inspect; bottom spreads all entries on sep lines
+  end
+end
+# player_tests_temp  
+
+
+# works for the moment (but with new Players generated during initialization)
+#   with UI code in place, should be able to initialize with set of skilled players instead
 class Game
   attr_reader :players # :winner 
   def initialize(num_players)
@@ -242,28 +285,25 @@ class Game
   end
   
   def play_game
-    10.times { Turn.new(@players) }
+    10.times { GameTurn.new(@players) }
   end
 end
 
 
-# puts "bob"
-# bob = Player.new
-# bob.bowl
-# puts bob.frames.inspect
-# 9.times { bob.bowl }
-# puts bob.frames.inspect
 
-# puts "turns"
-# alpha = Player.new
-# beta = Player.new
-# 10.times do 
-  # turn = Turn.new [alpha, beta]
-# end
+# works for game initialized with #players only -- will break once Game decoupled from Player
+def game_tests_temp
+  puts "turns"
+  alpha = Player.new
+  beta = Player.new
+  10.times do 
+    turn = GameTurn.new [alpha, beta]
+  end
 
-# puts "test game"
-# test_game = Game.new(3)
-# test_game.play_game
+  puts "test game"
+  test_game = Game.new(3)
+  test_game.play_game
+end
 
 
 
