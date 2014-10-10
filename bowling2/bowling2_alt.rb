@@ -64,27 +64,22 @@ class Player
   end
 end
 
-# picks = []
-    # (@skill + 1).times do
-      # pick = rand(0..pins)
-      # picks << pick
-      # break if pick == pins
-    # end
-    # picks.max
+def altver_playertest
+  player1 = Player.new
+  puts player1.skill
+  puts player1.roll.inspect
+  puts 
 
-player1 = Player.new
-puts player1.skill
-puts player1.roll.inspect
-puts 
-
-player2 = Player.new 15
-puts player2.skill
-puts player2.roll.inspect
-puts 
+  player2 = Player.new 15
+  puts player2.skill
+  puts player2.roll.inspect
+  puts 
+end
 
 
 # ---------------------------------------------------------
 # stores/evaluates set of rolls in single array
+# data: rolls / behavior: totals and checks for bonus
 class Frame
   attr_reader :results             # read only; avoid accessor
  
@@ -113,12 +108,14 @@ class Frame
   end
 end
 
-frame1 = Frame.new (player1)
-puts "frame1:\t#{frame1.results}"
+def altver_frametest
+  frame1 = Frame.new (player1)
+  puts "frame1:\t#{frame1.results}"
+end
 
 
-# going to initialize with Player, not with skill setting
-# does not need to know that player can .roll --> that responsibility to Frame
+# || sure about below? || that basically means passing player all down the chain...
+# initialize with Player, not with skill setting; doesn't know Player can .roll, just that new Frame(s) needed
 class PlayerGame
   attr_reader :player, :frames, :scores
   def initialize(player) 
@@ -156,66 +153,75 @@ class PlayerGame
   end
 end
 
-game1 = PlayerGame.new (player1)
-3.times { game1.take_turn }
-puts "game1:\t#{game1.frames_played}"
+def altver_PGtest
+  pgame1 = PlayerGame.new (player1)
+  3.times { pgame1.take_turn }
+  puts "pgame1:\t#{pgame1.frames_played}"
 
-game2 = PlayerGame.new (player2)
-3.times { game2.take_turn }
-puts "game2:\t#{game2.frames_played}"
-
-
-# class GameTurn
-  # def initialize(players)
-    # @players = players
-    # @players.each { |player| player.take_turn }
-  # end
-# end
+  pgame2 = PlayerGame.new (player2)
+  3.times { pgame2.take_turn }
+  puts "pgame2:\t#{pgame2.frames_played}"
+end
 
 
-
-# # works for the moment (but with new Players generated during initialization)
-# #   with UI code in place, should be able to initialize with set of skilled players instead
-# class Game
-  # attr_reader :players # :winner 
-  # def initialize(players)
-    # @players = players
-    # play_game
-  # end
+# initialize with array of Players
+class Game
+  attr_reader :players, :player_games # :winner 
+  def initialize(players)
+    @players = players
+    @player_games = []
+    @players.each { |player| @player_games << PlayerGame.new(player) }
+    play_game
+  end
   
-  # private
+  private
   
-  # def play_game
-    # 10.times { GameTurn.new(@players) }
-  # end
-# end
-
-
-
-# # user input here for now
-# def input_player_settings
-  # print "How many players(1-4)?  "
-    # numplayers = gets.chomp.to_i
-    # numplayers = 1 if numplayers < 1
-    # numplayers = 4 if numplayers > 4
+  def play_game
+    10.times { play_turn }
+  end
   
-  # @input_players = []
-  # puts "Enter skill level 0-15 (2+ = good, 4+ = v.good, 6+ = pro):"
-  # (1..numplayers).each do |p|
-    # print "Skill level for player #{p}?  "
-    # skill = gets.chomp.to_i
-    # skill = 0 if skill < 0
-    # @input_players << Player.new(skill)
-  # end
-# end
+  def play_turn
+    @player_games.each { |curr_player| curr_player.take_turn }
+  end
+end
+
+def altver_gametest
+  input_players = [Player.new, Player.new(2), Player.new(4), Player.new(8)]
+  puts input_players.inspect
+  game1 = Game.new (input_players)
+  puts game1.inspect
+  puts
+  (0...input_players.length).each do |i|
+    puts game1.player_games[i].frames_played.inspect
+  end
+end
+altver_gametest
 
 
+# user input here for now
+def input_player_settings
+  print "How many players(1-4)?  "
+    numplayers = gets.chomp.to_i
+    numplayers = 1 if numplayers < 1
+    numplayers = 4 if numplayers > 4
+  
+  @input_players = []
+  puts "Enter skill level 0-15 (2+ = good, 4+ = v.good, 6+ = pro):"
+  (1..numplayers).each do |p|
+    print "Skill level for player #{p}?  "
+    skill = gets.chomp.to_i
+    skill = 0 if skill < 0
+    @input_players << Player.new(skill)
+  end
+end
 
-# # runs/prints one game
-    # input_player_settings
-    # game = Game.new(@input_players)
-    # players_final = game.players
+
+# runs/prints one game
+    input_player_settings
+    game = Game.new(@input_players)
+    # players_final = game.player_games
     # players_final.each { |player| puts player.frames_played.inspect }
+    (0...@input_players.length).each { |i| puts game.player_games[i].frames_played.inspect }
 
 
 
