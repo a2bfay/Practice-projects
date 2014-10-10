@@ -2,19 +2,11 @@
 # "The knowledge that rims are at [0] should not be duplicated; it should be known in just one place."
 # "these few lines of code are a minor inconvenience compared to the permanent cost of repeatedly indexing into a complex array"
 # "If you rephrase every one of [a class's] methods as a question, asking the question ought to make sense."
+# "Gear no longer cares about the class of the injected object, it merely expects that it implement diameter." [see 'results']
 
 # BOWLING SIMULATOR WITH SCORING DONE FRAME-BY-FRAME (vs. 'kata' version)
 # second attempt - trying to design by proper classes/object-orientation
 #   edit: building as skill/multiplayer from outset - not nec. easier to do otherwise
-# but:  first thought -
-# the basic units/tasks here might be:
-#   roll / select result from input range
-#   frame / store some number of rolls, give total/bonus
-#     frame-tenth / same, w/ special cases
-#   player-turn / create and fill one frame
-#   player-game / link ten frames to represent complete game
-#   player / (only need if skill or if multiple? not sure)
-#   game / directs turns/games and evaluate scores/winners
 
 # crux of trouble so far:  a LANE_GAME is built out of turns, but a PLAYER_GAME is built out of consecutive frames, w/ scores
 # should frame data get stored in PLAYER?  that would require TURN to distribute FRAMES among PLAYERS
@@ -38,12 +30,9 @@
 #                       but tests busted and will need double to get working
 #                       also need to rework Player as a result...
 # --> second revision - DOUBLES CREATED/TESTS WORKING
-#                       
-
+# 9 Oct - roll/frame/player/turn/game all working together - Player knows/expects a lot, rest at least somewhat isolated                      
   
 # ================================================================================
-
-
 puts; puts
 
 
@@ -51,7 +40,7 @@ puts; puts
 # returns up to two weighted random rolls from 10 initial pins
 class RollCalc
   attr_reader :results  
-  def initialize(skill = 0)  #add player skill here later?
+  def initialize(skill = 0)
     raise RangeError unless skill >= 0
     @skill = skill
     @roll_no = 1
@@ -83,17 +72,8 @@ class RollCalc
     # its data consists of pins, and its behavior consists of hitting/counting them
  end
 
-def temp_roll_output_test 
-  test_rollcalc = RollCalc.new
-  puts "test_rollcalc: #{test_rollcalc}"
-  puts "test_rollcalc.results: #{test_rollcalc.results}"
-  puts
-end
-temp_roll_output_test
 
 
-
-# METZ: "Gear no longer cares about the class of the injected object, it merely expects that it implement diameter."
 # ---------------------------------------------------------
 # stores/evalutes set of rolls
 class Frame
@@ -133,87 +113,12 @@ end
 
 
 
-# now defunct. temporarility saving for comparison to _NEW
-def temp_frame_tests_OLD
-  2.times do
-    puts "Frame Skill 0"
-    test_fr = Frame.new ( RollCalc.new.results ) # here i'm passing in the OUTPUT. if you write so you're passing in the actual calcuator, how do you test? --> DOUBLES
-    puts test_fr.inspect
-    puts test_fr.results.inspect
-    puts test_fr.first_roll
-    puts test_fr.second_roll           # no error w/ strike, just blank
-    puts test_fr.second_roll.inspect   # yes, nil in that case
-    puts test_fr.total
-    puts test_fr.strike?
-    puts test_fr.spare?
-    puts
-  end
-
-  2.times do
-    puts "Frame Skill 15"
-    test_fr = Frame.new ( RollCalc.new(15).results )
-    puts test_fr.inspect
-    puts test_fr.results.inspect
-    puts test_fr.first_roll
-    puts test_fr.second_roll           # no error w/ strike, just blank
-    puts test_fr.second_roll.inspect   # yes, nil in that case
-    puts test_fr.total
-    puts test_fr.strike?
-    puts test_fr.spare?
-    puts
-  end
-end
-
-
-
-def temp_frame_tests_NEW
-  2.times do
-    puts "Frame Skill 0"
-    test_fr = Frame.new ( RollCalc.new ) # here i'm passing in the OBJECT
-    puts test_fr.inspect
-    puts test_fr.results.inspect
-    puts test_fr.first_roll
-    puts test_fr.second_roll           # no error w/ strike, just blank
-    puts test_fr.second_roll.inspect   # yes, nil in that case
-    puts test_fr.total
-    puts test_fr.strike?
-    puts test_fr.spare?
-    puts
-  end
-
-  2.times do
-    puts "Frame Skill 15"
-    test_fr = Frame.new ( RollCalc.new(15) )
-    puts test_fr.inspect
-    puts test_fr.results.inspect
-    puts test_fr.first_roll
-    puts test_fr.second_roll           # no error w/ strike, just blank
-    puts test_fr.second_roll.inspect   # yes, nil in that case
-    puts test_fr.total
-    puts test_fr.strike?
-    puts test_fr.spare?
-    puts
-  end
-end
-temp_frame_tests_NEW
-
-
-
-class GameTurn
-  def initialize(players)
-    @players = players
-    @players.each { |player| player.take_turn }
-      @players.each { |player| puts player.frames_played.inspect }  # temp
-      puts
-  end
-end
-
-
-
-# injection seems weird here. think of methods as /questions/
+# injection seems weird here - frames have to be generated *somewhere*, and during gameplay (unlike deck of cards)
+#     --> finish as is and post for review.
+# more need to think of methods as /questions/ ?
+# does this require injecting a factory?
 class Player
-  attr_reader :skill, :frames
-  
+  attr_reader :frames # :skill,
   def initialize(skill = 0) # will want to inject scoring object as well
     @skill = skill
     @frames = []
@@ -238,9 +143,9 @@ class Player
   end
     
   private
-   
+  
   def bowl
-    player_frame = Frame.new ( RollCalc.new(@skill) )   # pass object as argument, not results
+    player_frame = Frame.new( RollCalc.new(@skill) )     # pass object as argument, not results
     @frames << player_frame                               # do the same here? --> YES. makes Frame methods available elsewhere
   end
   
@@ -250,39 +155,26 @@ class Player
 end
 
 
-# guide to screen output when player's @frames is an array of Frame *objects* (not just result arrays)
-def player_tests_temp
-  you = Player.new
-  me = Player.new 5
-  3.times { you.take_turn; puts you.frames.inspect }   # can't simply drop frames.results.inspect in here
-  3.times { me.take_turn; puts me.frames.inspect }
-  puts
-  # +1's below only because using single iterator (might otherwise be array index vs. frame no)
-  (0..2).each do |i| 
-    puts "*"
-    puts me.frames[i].inspect             # v
-    puts me.frame(i + 1)                  # this and above are almost equivalent (this line doesn't include @results
-    puts me.frames[i].results.inspect     # this and both below are exactly equivalent
-    puts me.frame(i + 1).results.inspect  # ^
-    puts me.frame_results(i + 1).inspect  # ^
-    puts me.frames[i].strike?
-    puts me.frames[i].spare?
-    puts "*"
-    puts " #{me.frames_played}"
-    puts me.frames_played                 # ok, funny: top line works just like .inspect; bottom spreads all entries on sep lines
+
+class GameTurn
+  def initialize(players)
+    @players = players
+    @players.each { |player| player.take_turn }
   end
 end
-# player_tests_temp  
+
 
 
 # works for the moment (but with new Players generated during initialization)
 #   with UI code in place, should be able to initialize with set of skilled players instead
 class Game
   attr_reader :players # :winner 
-  def initialize(num_players)
-    @players = []
-    num_players.times { @players << Player.new }
+  def initialize(players)
+    @players = players
+    play_game
   end
+  
+  private
   
   def play_game
     10.times { GameTurn.new(@players) }
@@ -291,19 +183,30 @@ end
 
 
 
-# works for game initialized with #players only -- will break once Game decoupled from Player
-def game_tests_temp
-  puts "turns"
-  alpha = Player.new
-  beta = Player.new
-  10.times do 
-    turn = GameTurn.new [alpha, beta]
+# user input here for now
+def input_player_settings
+  print "How many players(1-4)?  "
+    numplayers = gets.chomp.to_i
+    numplayers = 1 if numplayers < 1
+    numplayers = 4 if numplayers > 4
+  
+  @input_players = []
+  puts "Enter skill level 0-15 (2+ = good, 4+ = v.good, 6+ = pro):"
+  (1..numplayers).each do |p|
+    print "Skill level for player #{p}?  "
+    skill = gets.chomp.to_i
+    skill = 0 if skill < 0
+    @input_players << Player.new(skill)
   end
-
-  puts "test game"
-  test_game = Game.new(3)
-  test_game.play_game
 end
+
+
+
+# runs/prints one game
+    input_player_settings
+    game = Game.new(@input_players)
+    players_final = game.players
+    players_final.each { |player| puts player.frames_played.inspect }
 
 
 
@@ -337,7 +240,7 @@ class TestRollCalc < Test::Unit::TestCase
 end
 
 
-# doubles provide deterministic cases for testing Frame
+# these doubles provide deterministic cases for testing Frame
 class StrikeDouble
   def results
     [10]
@@ -357,7 +260,7 @@ class OpenFrameDouble
 end
 
 
-# Frame only knows that its argument responds to results
+# Frame only knows that the object passed to it responds to results
 class TestFrame < Test::Unit::TestCase
   def test_first_roll
     frame = Frame.new OpenFrameDouble.new
@@ -391,15 +294,114 @@ class TestFrame < Test::Unit::TestCase
 end
 
 
+# Player 
+
+
+# GameTurn only knows that the objects passed to it respond to take_turn
+#   but that's a command, not a query -- the data in each Player changes when it gets that message
+#   so is a mock going to be necessary here?
+class TestGameTurn < Test::Unit::TestCase
+end
+
+
+
+# =========================================================================================================
+# TEMP TESTS / OUTPUT GUIDES
 
 # for understanding structure of object
 def roll_tests_temp
   puts "roll_tests line #{__LINE__}"
-  roll1 = Roll.new
+  roll1 = RollCalc.new
   puts "this is object: #{roll1}"
-  puts "this is reading result w/in object: #{roll1.result} / no change between readings: #{roll1.result}"
-  roll2 = Roll.new.result
+  puts "this is reading result w/in object: #{roll1.results} / no change between readings: #{roll1.results}"
+  roll2 = RollCalc.new.results
   puts "this is result of new object saved to var: #{roll2}"
   puts
 end
+# roll_tests_temp
 
+def temp_roll_output_test 
+  test_rollcalc = RollCalc.new
+  puts "test_rollcalc: #{test_rollcalc}"
+  puts "test_rollcalc.results: #{test_rollcalc.results}"
+  puts
+end
+# temp_roll_output_test
+
+# guide to screen output from Frame when initialized with RollCalc OBJECT - not just results
+def temp_frame_tests_NEW
+  2.times do
+    puts "Frame Skill 0"
+    test_fr = Frame.new ( RollCalc.new ) # here i'm passing in the OBJECT
+    puts test_fr.inspect
+    puts test_fr.results.inspect
+    puts test_fr.first_roll
+    puts test_fr.second_roll           # no error w/ strike, just blank
+    puts test_fr.second_roll.inspect   # yes, nil in that case
+    puts test_fr.total
+    puts test_fr.strike?
+    puts test_fr.spare?
+    puts
+  end
+
+  2.times do
+    puts "Frame Skill 15"
+    test_fr = Frame.new ( RollCalc.new(15) )
+    puts test_fr.inspect
+    puts test_fr.results.inspect
+    puts test_fr.first_roll
+    puts test_fr.second_roll           # no error w/ strike, just blank
+    puts test_fr.second_roll.inspect   # yes, nil in that case
+    puts test_fr.total
+    puts test_fr.strike?
+    puts test_fr.spare?
+    puts
+  end
+end
+# temp_frame_tests_NEW
+
+# guide to screen output when player's @frames is an array of Frame *objects* (not just result arrays)
+def player_tests_temp
+  you = Player.new
+  me = Player.new 5
+  3.times { you.take_turn; puts you.frames.inspect }   # can't simply drop frames.results.inspect in here
+  3.times { me.take_turn; puts me.frames.inspect }
+  puts
+  # +1's below only because using single iterator (might otherwise be array index vs. frame no)
+  (0..2).each do |i| 
+    puts "*"
+    puts me.frames[i].inspect             # v
+    puts me.frame(i + 1)                  # this and above are almost equivalent (this line doesn't include @results
+    puts me.frames[i].results.inspect     # this and both below are exactly equivalent
+    puts me.frame(i + 1).results.inspect  # ^
+    puts me.frame_results(i + 1).inspect  # ^
+    puts me.frames[i].strike?
+    puts me.frames[i].spare?
+    puts "*"
+    puts " #{me.frames_played}"
+    puts me.frames_played                 # ok, funny: top line works just like .inspect; bottom spreads all entries on sep lines
+  end
+end
+# player_tests_temp  
+
+# checking execution of GameTurn by itself and as called by Game; screen outputs included
+# works for game initialized with Player objects - numplayers from UI
+def game_tests_temp
+  puts "turns"
+  alpha = Player.new
+  beta = Player.new
+  10.times do 
+    turn = GameTurn.new [alpha, beta]
+    puts alpha.frames_played.inspect, beta.frames_played.inspect; puts
+  end
+
+  puts "test game"
+  input_players = []
+  (0..3).each { |skill| input_players << Player.new(skill) }
+  test_game = Game.new input_players          # this should be fixed
+  test_game.play_game
+  players = test_game.players
+  players.each { |player| puts player.frames_played.inspect }
+  puts
+end
+# game_tests_temp
