@@ -99,7 +99,7 @@ end
 
 
 # ---------------------------------------------------------
-# || sure about below? || that basically means passing player all down the chain...
+# \\ sure about below? //  that basically means passing player all down the chain...
 # initialize with Player, not with skill setting; for now, knows that Player can .roll --> makes Frame better to test
 # generates and stores set of Frame objects in new array
 # data: player, frames, turn scores / behavior: generates new frames, (eventually) passes to scoring process
@@ -108,7 +108,7 @@ class PlayerGame
   def initialize(player) 
     @player = player
     @frames = []
-    @scores = []
+    @scores = []    # this can just be array of numbers --> not array of arrays; will need to change tests
   end
   
   def take_turn
@@ -127,25 +127,100 @@ class PlayerGame
   def frames_played
     @frames.map { |fr| fr.results }
   end
-
+  
   def last_known_score
-    ( @scores.all? &:empty? ) ? 0 : @scores.compact[-1]
+    # puts "compact #{@scores.compact}"
+    # puts "nil? #{@scores.compact.nil?}"
+    # puts "empty? #{scores.compact.empty?}"
+    @scores.compact.empty?  ?  0  :  @scores.compact[-1]
   end
   
   private
   
   def bowl
     player_frame = Frame.new (@player.roll)     # pass Frame object into variable, not Frame.results
-    @frames << player_frame                # do the same here? --> YES. makes Frame methods available elsewhere
+    @frames << player_frame                     # do the same here? --> YES. makes Frame methods available elsewhere
   end
-  
+
+  def current_frame
+    @frames.length
+  end
+
+  def last_frame_scored
+      # puts "l_f_s #{@scores.flatten}"
+    @scores.flatten.compact.length
+  end
+ 
   def score_turn
-    @scores << []
+    active_frames = (current_frame <= 3)  ?  @frames  :  @frames[-3..-1]
+      # puts "*** #{active_frames} ***"
+    window = ScoringWindow.new( active_frames, last_known_score )
+    @scores << window.return_scores[-1]
+    # @scores[-2] ||= ...
+    # @scores[-3] ||= ...
+      # puts last_frame_scored
   end
 end
 
 
-# add ScoreWindow to work with @frames from PG
+# needs to know methods from Frame, unless get rid of that class
+# oi.. this will work, but need to study case tree from first version
+class ScoringWindow
+  attr_reader :return_scores
+  def initialize( frames, base_score )
+    @frames = frames
+    @base_score = base_score             # which frame this corresponds to is variable...
+    @return_scores = []
+    update_two_prev
+    update_one_prev
+    score_current
+  end
+
+  private
+  
+  def two_prev
+    @frames[-3]
+  end
+  
+  def one_prev
+    @frames[-2]
+  end
+  
+  def current
+    @frames[-1]
+  end
+
+  def update_two_prev
+    return if two_prev.nil?
+    return unless two_prev.strike?
+    frame_rolls = @frames.map { |fr| fr.results }    # extracts arrays from objects
+    flat_rolls = frame_rolls.flatten
+    bonus = flat_rolls[1] + flat_rolls[2]
+    @base_score += (10 + bonus)
+    @return_scores << @base_score
+  end
+      
+  def update_one_prev
+    return if one_prev.nil?
+    return unless ( one_prev.strike? || one_prev.spare? )
+    if one_prev.spare?
+      bonus = current.first_roll
+    elsif one_prev.strike?
+      current.strike?  ?  return  :  (bonus = current.total)
+    end
+    @base_score += (10 + bonus)
+    @return_scores << @base_score
+  end
+  
+  def score_current
+    if current.strike? || current.spare?
+      @return_scores << nil
+    else
+      @base_score += current.total
+      @return_scores << @base_score
+    end      
+  end
+end
 
 
 # initialize with array of Players
@@ -234,7 +309,7 @@ def single_game
   game = Game.new(@input_players)
   (0...@input_players.length).each { |i| puts game.player_games[i].frames_played.inspect }
 end
-# single_game
+ # single_game
 
 
 
