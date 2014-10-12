@@ -70,8 +70,7 @@ end
 # stores/evaluates set of rolls in single array
 # data: rolls / behavior: totals and checks for bonus
 class Frame
-  attr_reader :results             # read only; avoid accessor
- 
+  attr_reader :results             # read only; avoid accessor 
   def initialize(player_roll)
     @results = player_roll         # so this is an actual injection; no longer knows class, just response
   end                              # but means doubles are necessary for tests
@@ -84,9 +83,11 @@ class Frame
     @results[1] # this doesn't appear to require an 'unless' -- simply returns nil if nothing there
   end           # could add boolean second_roll? but don't see value yet
     
+  # need to think about how this will work with scoring methods in relation to 10th frame bonus
+  # can't redefine as [0]+[1] b/c strike/nil will produce error
   def total
-    @results.reduce(:+)
-  end
+    @results.reduce(:+)  
+  end                    
 
   def strike?
     @results[0] == 10
@@ -135,7 +136,7 @@ class PlayerGame
     @scores.compact.empty?  ?  0  :  @scores.compact[-1]
   end
   
-  private
+    private
   
   def bowl
     player_frame = Frame.new (@player.roll)     # pass Frame object into variable, not Frame.results
@@ -155,9 +156,9 @@ class PlayerGame
     active_frames = (current_frame <= 3)  ?  @frames  :  @frames[-3..-1]
       # puts "*** #{active_frames} ***"
     window = ScoringWindow.new( active_frames, last_known_score )
-    @scores << window.return_scores[-1]
-    # @scores[-2] ||= ...
-    # @scores[-3] ||= ...
+    @scores << window.return_scores[-1]    # this will always come back
+    @scores[-2] ||= window.return_scores[-2] if window.return_scores.length >= 2
+    @scores[-3] ||= window.return_scores[-3] if window.return_scores.length == 3                 # <= need to set these up next
       # puts last_frame_scored
   end
 end
@@ -171,12 +172,12 @@ class ScoringWindow
     @frames = frames
     @base_score = base_score             # which frame this corresponds to is variable...
     @return_scores = []
-    update_two_prev
-    update_one_prev
-    score_current
+    calculate_scores
+      input_frames = @frames.map { |fr| fr.results }  # temp for testing
+      puts "scoring:\t#{input_frames.inspect}\n\t\t#{@return_scores.inspect}"  #temp for testing
   end
 
-  private
+    private
   
   def two_prev
     @frames[-3]
@@ -189,36 +190,57 @@ class ScoringWindow
   def current
     @frames[-1]
   end
-
+  
+  def tenth_bonus?
+    current.results.length == 3
+  end
+    
+  def update_score(amount)
+    @base_score += amount
+    @return_scores << @base_score
+  end
+  
+  def calculate_scores
+    update_two_prev
+    tenth_bonus?  ?  ( update_ninth_before_bonus; score_tenth_bonus )
+                  :  ( update_one_prev; score_current )
+  end
+      
   def update_two_prev
     return if two_prev.nil?
     return unless two_prev.strike?
-    frame_rolls = @frames.map { |fr| fr.results }    # extracts arrays from objects
+    frame_rolls = @frames.map { |fr| fr.results }    
     flat_rolls = frame_rolls.flatten
     bonus = flat_rolls[1] + flat_rolls[2]
-    @base_score += (10 + bonus)
-    @return_scores << @base_score
+    update_score(10 + bonus)
   end
       
   def update_one_prev
     return if one_prev.nil?
     return unless ( one_prev.strike? || one_prev.spare? )
-    if one_prev.spare?
-      bonus = current.first_roll
-    elsif one_prev.strike?
-      current.strike?  ?  return  :  (bonus = current.total)
-    end
-    @base_score += (10 + bonus)
-    @return_scores << @base_score
+    return if ( one_prev.strike? && current.strike? )
+    bonus = one_prev.strike?  ?  current.total  :  current.first_roll
+    update_score(10 + bonus)
   end
-  
+
+  # this doesn't work in 10thFR yet -- and won't until game generates bonus rolls
   def score_current
     if current.strike? || current.spare?
       @return_scores << nil
     else
-      @base_score += current.total
-      @return_scores << @base_score
+      update_score(current.total)
     end      
+  end
+  
+  def update_ninth_before_bonus
+    return unless ( one_prev.strike? || one_prev.spare? )
+    bonus = one_prev.strike?  ? (current.first_roll + current.second_roll)  
+                              :  current.first_roll
+    update_score(10 + bonus)
+  end
+  
+  def score_tenth_bonus
+    update_score(current.total)
   end
 end
 
@@ -307,9 +329,15 @@ end
 def single_game
   input_player_settings
   game = Game.new(@input_players)
-  (0...@input_players.length).each { |i| puts game.player_games[i].frames_played.inspect }
+  (0...@input_players.length).each do |i| 
+    (0...10).each do |fr|
+      print game.player_games[i].scores[fr].inspect, "\t"
+      print game.player_games[i].frames[fr].results.inspect, "\n"
+    end
+  end
+                                     
 end
- # single_game
+ single_game
 
 
 
