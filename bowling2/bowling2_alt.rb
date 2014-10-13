@@ -172,9 +172,10 @@ class ScoringWindow
     @frames = frames
     @base_score = base_score             # which frame this corresponds to is variable...
     @return_scores = []
+      input_frames = @frames.map { |fr| fr.results }                                # temp for testing
+      puts "\nwindow\t\t    base = #{@base_score}\n\t#{input_frames.inspect}\n\n"
     calculate_scores
-      input_frames = @frames.map { |fr| fr.results }  # temp for testing
-      puts "scoring:\t#{input_frames.inspect}\n\t\t#{@return_scores.inspect}"  #temp for testing
+      puts "\n\t#{@return_scores.inspect}"                                          #temp for testing
   end
 
     private
@@ -196,7 +197,9 @@ class ScoringWindow
   end
     
   def update_score(amount)
+    # puts "\tu_s #{__LINE__}"
     @base_score += amount
+    # puts "\tu_s #{__LINE__}\tnew base = #{@base_score}"
     @return_scores << @base_score
   end
   
@@ -207,8 +210,11 @@ class ScoringWindow
   end
       
   def update_two_prev
+    # puts "\tu2p #{__LINE__}"
     return if two_prev.nil?
-    return unless two_prev.strike?
+    # puts "\tu2p #{__LINE__} - past nil check"
+    return unless ( two_prev.strike? && one_prev.strike? )
+    # puts "\tu2p #{__LINE__} - past strike_s_ check"
     frame_rolls = @frames.map { |fr| fr.results }    
     flat_rolls = frame_rolls.flatten
     bonus = flat_rolls[1] + flat_rolls[2]
@@ -216,30 +222,45 @@ class ScoringWindow
   end
       
   def update_one_prev
+    # puts "\tu1p #{__LINE__}"
     return if one_prev.nil?
+    # puts "\tu1p #{__LINE__} - past nil check"
     return unless ( one_prev.strike? || one_prev.spare? )
-    return if ( one_prev.strike? && current.strike? )
-    bonus = one_prev.strike?  ?  current.total  :  current.first_roll
-    update_score(10 + bonus)
+    # puts "\tu1p #{__LINE__} - past bonus check"
+    if ( one_prev.strike? && current.strike? )                                      # no, not return -- this needs to append nil
+      @return_scores << nil
+      # puts "\tu1p #{__LINE__} - append nil"
+    else
+      # puts "\tu1p #{__LINE__} - past current strike check"
+      bonus = one_prev.strike?  ?  current.total  :  current.first_roll
+      # puts "\tu1p #{__LINE__} - sending #{bonus} bonus"
+      update_score(10 + bonus)
+    end  
   end
 
   # this doesn't work in 10thFR yet -- and won't until game generates bonus rolls
   def score_current
+    # puts "\ts_c #{__LINE__}"
     if current.strike? || current.spare?
       @return_scores << nil
+      # puts "\ts_c #{__LINE__} - append nil"
     else
+      # puts "\ts_c #{__LINE__} - to u_s"
       update_score(current.total)
     end      
   end
   
   def update_ninth_before_bonus
+    # puts "\tu9b #{__LINE__}"
     return unless ( one_prev.strike? || one_prev.spare? )
+    # puts "\tu9b #{__LINE__} - past bonus check"
     bonus = one_prev.strike?  ? (current.first_roll + current.second_roll)  
                               :  current.first_roll
     update_score(10 + bonus)
   end
   
   def score_tenth_bonus
+    # puts "\tu10 #{__LINE__}"
     update_score(current.total)
   end
 end
@@ -329,6 +350,7 @@ end
 def single_game
   input_player_settings
   game = Game.new(@input_players)
+  puts
   (0...@input_players.length).each do |i| 
     (0...10).each do |fr|
       print game.player_games[i].scores[fr].inspect, "\t"
@@ -457,29 +479,33 @@ class TestPlayerGame < Test::Unit::TestCase
 end
 
 
+class TestScoringWindow < Test::Unit::TestCase
+end
+
+
 # GameTurn uses only one interface (take_turn), but it's a command
 #   -- the data in each Player changes when it gets that message
 # as above w/ PG: testing w/ actual objects instead of mocks because overall program is small
-class TestGame < Test::Unit::TestCase
-  def test_single_game
-    game = Game.new [Player.new]
-      # puts "\nsingle >> #{game.player_games.inspect}"
-      # puts "\n << #{game.player_games.length} >>"
-    assert game.player_games.length == 1
-      # puts game.player_games[0].frames_played.inspect
-    assert game.player_games[0].frames_played.length == 10
-  end
+# class TestGame < Test::Unit::TestCase
+  # def test_single_game
+    # game = Game.new [Player.new]
+      # # puts "\nsingle >> #{game.player_games.inspect}"
+      # # puts "\n << #{game.player_games.length} >>"
+    # assert game.player_games.length == 1
+      # # puts game.player_games[0].frames_played.inspect
+    # assert game.player_games[0].frames_played.length == 10
+  # end
 
-  def test_multplr_game
-    mpl_game = Game.new [Player.new, Player.new, Player.new, Player.new]
-      # puts "\nmult >> #{mpl_game.player_games.inspect}"
-      # puts "\n << #{mpl_game.player_games.length} >>"
-    assert mpl_game.player_games.length == 4
-      # puts "\nmult >>> #{mpl_game.player_games[0].frames_played.inspect}"
-      # puts "\n << #{mpl_game.player_games[3].frames_played.length} >>"
-    assert mpl_game.player_games[3].frames_played.length == 10 
-  end  
-end
+  # def test_multplr_game
+    # mpl_game = Game.new [Player.new, Player.new, Player.new, Player.new]
+      # # puts "\nmult >> #{mpl_game.player_games.inspect}"
+      # # puts "\n << #{mpl_game.player_games.length} >>"
+    # assert mpl_game.player_games.length == 4
+      # # puts "\nmult >>> #{mpl_game.player_games[0].frames_played.inspect}"
+      # # puts "\n << #{mpl_game.player_games[3].frames_played.length} >>"
+    # assert mpl_game.player_games[3].frames_played.length == 10 
+  # end  
+# end
 
 
 
