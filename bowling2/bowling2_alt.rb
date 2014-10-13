@@ -72,19 +72,17 @@ end
 class Frame
   attr_reader :results             # read only; avoid accessor 
   def initialize(player_roll)
-    @results = player_roll         # so this is an actual injection; no longer knows class, just response
-  end                              # but means doubles are necessary for tests
+    @results = player_roll         # not really an injection - simply initialize with array
+  end                              
   
   def first_roll
     @results[0]
   end
   
   def second_roll
-    @results[1] # this doesn't appear to require an 'unless' -- simply returns nil if nothing there
-  end           # could add boolean second_roll? but don't see value yet
-    
-  # need to think about how this will work with scoring methods in relation to 10th frame bonus
-  # can't redefine as [0]+[1] b/c strike/nil will produce error
+    @results[1]                                                   # doesn't require an 'unless' -- simply returns nil if nothing there
+  end
+  
   def total
     @results.reduce(:+)  
   end                    
@@ -109,28 +107,20 @@ class PlayerGame
   def initialize(player) 
     @player = player
     @frames = []
-    @scores = []    # this can just be array of numbers --> not array of arrays; will need to change tests
+    @scores = []    # this can just be array of numbers --> not array of arrays
   end
   
   def take_turn
-    puts "\nPG#{__LINE__} - @frames.length - #{@frames.length}"
+    # puts "\nPG#{__LINE__} - @frames.length - #{@frames.length}"
     @frames.length == 9  ?  bowl_tenth  :  bowl
-    # bowl
     score_turn
   end
 
-  def frame(num)
-    @frames[num - 1]
-  end
-
-  def frame_results(num)
-    frame(num).results
-  end
-  
   def frames_played
     @frames.map { |fr| fr.results }
   end
   
+  # could be private, except for tests
   def last_known_score
     # puts "compact #{@scores.compact}"
     # puts "nil? #{@scores.compact.nil?}"
@@ -138,7 +128,7 @@ class PlayerGame
     @scores.compact.empty?  ?  0  :  @scores.compact[-1]
   end
   
-    private
+  private
   
   def bowl
     player_frame = Frame.new (@player.roll)     # pass Frame object into variable, not Frame.results
@@ -164,11 +154,6 @@ class PlayerGame
     @frames.length
   end
 
-  def last_frame_scored
-      # puts "l_f_s #{@scores.flatten}"
-    @scores.flatten.compact.length
-  end
- 
   def score_turn
     active_frames = (current_frame <= 3)  ?  @frames  :  @frames[-3..-1]
       # puts "*** #{active_frames} ***"
@@ -176,8 +161,22 @@ class PlayerGame
     @scores << window.return_scores[-1]           # no if -- this will always come back
     @scores[-2] ||= window.return_scores[-2] if window.return_scores.length >= 2
     @scores[-3] ||= window.return_scores[-3] if window.return_scores.length == 3                 # <= need to set these up next
-      puts "\tlast_scored #{last_frame_scored}"       # temp for testing
+      # puts "\tlast_scored #{last_frame_scored}"       # temp for testing
   end
+  
+  # def last_frame_scored
+      # # puts "l_f_s #{@scores.flatten}"
+    # @scores.flatten.compact.length
+  # end
+ 
+  # def frame(num)
+    # @frames[num - 1]
+  # end
+
+  # def frame_results(num)
+    # frame(num).results
+  # end
+  
 end
 
 
@@ -186,16 +185,17 @@ end
 class ScoringWindow
   attr_reader :return_scores
   def initialize( frames, base_score )
+    raise RangeError unless base_score >= 0
     @frames = frames
-    @base_score = base_score             # which frame this corresponds to is variable...
+    @base_score = base_score                                   # which frame this corresponds to is variable...
     @return_scores = []
-      input_frames = @frames.map { |fr| fr.results }                                # temp for testing
-      puts "\nwindow\t\t    base = #{@base_score}\n\t#{input_frames.inspect}\n\n"
+      # input_frames = @frames.map { |fr| fr.results }                                # temp for testing
+      # puts "\nwindow\t\t    base = #{@base_score}\n\t#{input_frames.inspect}\n\n"
     calculate_scores
-      puts "\n\t#{@return_scores.inspect}"                                          #temp for testing
+      # puts "\n\t#{@return_scores.inspect}"                                          #temp for testing
   end
 
-    private
+  private
   
   def two_prev
     @frames[-3]
@@ -213,6 +213,12 @@ class ScoringWindow
     current.results.length == 3
   end
     
+  def calculate_scores
+    update_two_prev
+    tenth_bonus?  ?  ( update_ninth_before_bonus; score_tenth_bonus )
+                  :  ( update_one_prev; score_current )
+  end
+      
   def update_score(amount)
     # puts "\tu_s #{__LINE__}"
     @base_score += amount
@@ -220,12 +226,6 @@ class ScoringWindow
     @return_scores << @base_score
   end
   
-  def calculate_scores
-    update_two_prev
-    tenth_bonus?  ?  ( update_ninth_before_bonus; score_tenth_bonus )
-                  :  ( update_one_prev; score_current )
-  end
-      
   def update_two_prev
     # puts "\tu2p #{__LINE__}"
     return if two_prev.nil?
@@ -255,7 +255,6 @@ class ScoringWindow
     end  
   end
 
-  # this doesn't work in 10thFR yet -- and won't until game generates bonus rolls
   def score_current
     # puts "\ts_c #{__LINE__}"
     if current.strike? || current.spare?
@@ -290,7 +289,7 @@ class Game
     @players = players
     @player_games = []
     @players.each { |player| @player_games << PlayerGame.new(player) }
-    puts "\ninside class: #{@player_games.length}" # temp
+    # puts "\ninside class: #{@player_games.length}" # temp
     play_game
   end
   
@@ -440,32 +439,12 @@ class TestFrame < Test::Unit::TestCase
     frame = Frame.new [2,8]
     assert frame.spare?
   end
-  
-# STORAGE : these doubles provide deterministic cases for testing Frame --> will need if initialize with Object instead of roll array
-# class StrikeDouble
-  # def results
-    # [10]
-  # end
-# end
-
-# class SpareDouble
-  # def results
-     # [2,8]
-  # end
-# end
-
-# class OpenFrameDouble
-  # def initialize
-    # frame = [3,4]
-    # frame
-  # end
-# end
-  
 end
 
 
-# seems tough to test - game logic is here, with non-deterministic results
-# since overall program is small, call actual objects instead of mocks (?)
+# seems tough to test - game logic is here, with non-deterministic results,
+#   and all classes except Game 
+# since overall program is small, creating actual objects instead of mocks
 class TestPlayerGame < Test::Unit::TestCase
   def test_take_turn_appends_to_frames_array
     playergame = PlayerGame.new(Player.new)
@@ -496,32 +475,70 @@ end
 
 
 class TestScoringWindow < Test::Unit::TestCase
+  def setup
+    @open_frame = Frame.new( [3, 4] )
+    @strike = Frame.new( [10] )
+    @spare = Frame.new( [2,8] )
+    @bonus_tenth = Frame.new( [8, 2, 10] )
+  end
+  
+  def test_open_frames_return_newest_only
+    window = ScoringWindow.new( [@open_frame, @open_frame, @open_frame], 14 )
+    assert window.return_scores == [21]
+  end
+  
+  def test_spare_frames_return_one_update_plus_nil
+    window = ScoringWindow.new( [@spare, @spare, @spare], 12 )
+    assert window.return_scores.length == 2
+    assert window.return_scores == [24, nil]
+  end
+  
+  def test_strike_frames_return_one_update_plus_two_nils
+    window = ScoringWindow.new( [@strike, @strike, @strike], 0 )
+    assert window.return_scores == [30, nil, nil]
+  end
+  
+  def test_strikes_then_open_return_two_updates_plus_newest
+    window = ScoringWindow.new( [@strike, @strike, @open_frame], 0 )
+    assert window.return_scores == [23, 40, 47]
+  end
+    
+  def test_bonus_tenth_scored_correctly
+    window = ScoringWindow.new( [@strike, @strike, @bonus_tenth], 0 )
+    assert window.return_scores == [28, 48, 68]
+  end
 end
 
 
 # GameTurn uses only one interface (take_turn), but it's a command
 #   -- the data in each Player changes when it gets that message
 # as above w/ PG: testing w/ actual objects instead of mocks because overall program is small
-# class TestGame < Test::Unit::TestCase
-  # def test_single_game
-    # game = Game.new [Player.new]
-      # # puts "\nsingle >> #{game.player_games.inspect}"
-      # # puts "\n << #{game.player_games.length} >>"
-    # assert game.player_games.length == 1
-      # # puts game.player_games[0].frames_played.inspect
-    # assert game.player_games[0].frames_played.length == 10
-  # end
-
-  # def test_multplr_game
-    # mpl_game = Game.new [Player.new, Player.new, Player.new, Player.new]
-      # # puts "\nmult >> #{mpl_game.player_games.inspect}"
-      # # puts "\n << #{mpl_game.player_games.length} >>"
-    # assert mpl_game.player_games.length == 4
-      # # puts "\nmult >>> #{mpl_game.player_games[0].frames_played.inspect}"
-      # # puts "\n << #{mpl_game.player_games[3].frames_played.length} >>"
-    # assert mpl_game.player_games[3].frames_played.length == 10 
-  # end  
-# end
+class TestGame < Test::Unit::TestCase
+  def test_single_game_generates_ten_frames
+    game = Game.new [Player.new]
+      # puts "\nsingle >> #{game.player_games.inspect}"
+      # puts "\n << #{game.player_games.length} >>"
+    assert game.player_games.length == 1
+      # puts game.player_games[0].frames_played.inspect
+    assert game.player_games[0].frames_played.length == 10    
+  end
+  
+  def test_single_game_generates_valid_score
+    game = Game.new [Player.new]
+    total = game.player_games[0].scores[-1]
+    assert total.between? 0, 300    
+  end
+  
+  def test_multplr_game
+    mpl_game = Game.new [Player.new, Player.new, Player.new, Player.new]
+      # puts "\nmult >> #{mpl_game.player_games.inspect}"
+      # puts "\n << #{mpl_game.player_games.length} >>"
+    assert mpl_game.player_games.length == 4
+      # puts "\nmult >>> #{mpl_game.player_games[0].frames_played.inspect}"
+      # puts "\n << #{mpl_game.player_games[3].frames_played.length} >>"
+    assert mpl_game.player_games[3].frames_played.length == 10 
+  end  
+end
 
 
 
