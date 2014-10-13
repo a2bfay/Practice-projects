@@ -113,7 +113,9 @@ class PlayerGame
   end
   
   def take_turn
-    bowl
+    puts "\nPG#{__LINE__} - @frames.length - #{@frames.length}"
+    @frames.length == 9  ?  bowl_tenth  :  bowl
+    # bowl
     score_turn
   end
 
@@ -143,6 +145,21 @@ class PlayerGame
     @frames << player_frame                     # do the same here? --> YES. makes Frame methods available elsewhere
   end
 
+  def bowl_tenth
+    base_frame = Frame.new (@player.roll)
+    if base_frame.strike? || base_frame.spare?
+      # puts base_frame.results.inspect                                
+      first_bonus  = Frame.new (@player.roll)
+      second_bonus = Frame.new (@player.roll)
+      source_rolls = [base_frame.results, first_bonus.results, second_bonus.results]
+      three_rolls  = source_rolls.flatten.shift(3)
+      tenth_frame  = Frame.new (three_rolls)
+      @frames << tenth_frame
+    else
+      @frames << base_frame
+    end
+  end
+  
   def current_frame
     @frames.length
   end
@@ -156,10 +173,10 @@ class PlayerGame
     active_frames = (current_frame <= 3)  ?  @frames  :  @frames[-3..-1]
       # puts "*** #{active_frames} ***"
     window = ScoringWindow.new( active_frames, last_known_score )
-    @scores << window.return_scores[-1]    # this will always come back
+    @scores << window.return_scores[-1]           # no if -- this will always come back
     @scores[-2] ||= window.return_scores[-2] if window.return_scores.length >= 2
     @scores[-3] ||= window.return_scores[-3] if window.return_scores.length == 3                 # <= need to set these up next
-      # puts last_frame_scored
+      puts "\tlast_scored #{last_frame_scored}"       # temp for testing
   end
 end
 
@@ -289,7 +306,6 @@ class Game
 end
 
 
-
 class TempOutputTests
   # have to be combined - separate methods loses player creation...
   def base_output_tests
@@ -350,8 +366,8 @@ end
 def single_game
   input_player_settings
   game = Game.new(@input_players)
-  puts
-  (0...@input_players.length).each do |i| 
+  (0...@input_players.length).each do |i|  
+    puts
     (0...10).each do |fr|
       print game.player_games[i].scores[fr].inspect, "\t"
       print game.player_games[i].frames[fr].results.inspect, "\n"
