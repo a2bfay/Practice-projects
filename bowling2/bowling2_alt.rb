@@ -1,4 +1,4 @@
-# 9 Oct. --> TESTING ALTERNATE OBJECT DEFINITIONS; removing notes-to-self for easier reading
+# 13 Oct. --> KEEPING ALTERNATE OBJECT DEFINITIONS; manual merge back to main file
 
 # BOWLING SIMULATOR WITH SCORING DONE FRAME-BY-FRAME (vs. 'kata' version)
   # crux of trouble so far:  a LANE_GAME is built out of turns, but a PLAYER_GAME is built out of consecutive frames, w/ scores
@@ -14,9 +14,14 @@
 # who won?
 
 # Getting rid of : RollCalc / Frame / Player / Turn / Game
-# In favor of : Player / Frame / PlayerGame / Game
+# In favor of : Player / Frame / PlayerGame / ScoringWindow / Game
   
 # ================================================================================
+# METZ:
+# "The knowledge that rims are at [0] should not be duplicated; it should be known in just one place."
+# "these few lines of code are a minor inconvenience compared to the permanent cost of repeatedly indexing into a complex array"
+# "If you rephrase every one of [a class's] methods as a question, asking the question ought to make sense."
+# "Gear no longer cares about the class of the injected object, it merely expects that it implement diameter." [see 'results']
 puts; puts
 
 
@@ -181,7 +186,6 @@ end
 
 
 # needs to know methods from Frame, unless get rid of that class
-# oi.. this will work, but need to study case tree from first version
 class ScoringWindow
   attr_reader :return_scores
   def initialize( frames, base_score )
@@ -385,6 +389,11 @@ end
 
 # ===================================================================================================================================================================
 # METZ "test everything just once and in the proper place"
+# "This choice between injecting real or fake objects has far-reaching consequences.
+# Injecting the same objects at test time as are used at runtime ensures that tests break
+# correctly but may lead to long running tests. Alternatively, injecting doubles can speed
+# tests but leave them vulnerable to constructing a fantasy world where tests work but
+# the application fails."
 
 require "test/unit"
 puts "\n ------- TESTS -------"
