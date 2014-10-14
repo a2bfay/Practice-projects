@@ -1,11 +1,11 @@
 # BOWLING SIMULATOR WITH SCORING DONE FRAME-BY-FRAME (vs. 'kata' version)
-require "test/unit"
 
-
-# CLASSES  :  Player / Frame / PlayerGame / ScoringWindow / Game
+# CLASSES : Player / Frame / PlayerGame / ScoringWindow / Game / TurnRecorder
 # ===========================================================================
 
-# This class creates arrays of weighted-random rolls (1 or 2, from 10 pins)
+require "test/unit"
+
+# This class creates arrays of weighted-random rolls (1 or 2, from 10 pins).
 #       data: skill
 #       behavior: rolls generated according to skill
 class Player
@@ -38,7 +38,7 @@ class Player
     pins_hit = apply_skill(pins)
     @results << pins_hit
     update_lane(pins_hit)
-    weighted_roll(@pins_standing) unless ( pins_hit == 10 || @roll_no > 2 )
+    weighted_roll(@pins_standing) unless (pins_hit == 10 || @roll_no > 2)
   end
   
   def apply_skill(pins)
@@ -50,7 +50,7 @@ class Player
 end
 
 
-# This class stores and evaluates a single array of rolls
+# This class stores and evaluates a single array of rolls.
 #       data: rolls
 #       behavior: calculates total and checks for bonus
 class Frame
@@ -81,7 +81,7 @@ class Frame
 end
 
 
-# This class generates and stores Frame objects, then sends for scoring
+# This class generates and stores Frame objects, then sends for scoring.
 #       data: player, frames, score subtotals
 #       behavior: generates new frames, passes to scoring process
 class PlayerGame
@@ -108,24 +108,28 @@ class PlayerGame
     private
   
   def bowl
-    player_frame = Frame.new (@player.roll)  
+    player_frame = Frame.new(@player.roll)  
     @frames << player_frame                  
   end
 
   def bowl_tenth
-    base_frame = Frame.new (@player.roll)
+    base_frame = Frame.new(@player.roll)
     if base_frame.strike? || base_frame.spare?
-      first_bonus  = Frame.new (@player.roll)
-      second_bonus = Frame.new (@player.roll)
-      source_rolls = [base_frame.results, first_bonus.results, second_bonus.results]
-      three_rolls  = source_rolls.flatten.shift(3)
-      tenth_frame  = Frame.new (three_rolls)
+      tenth_frame = generate_bonus(base_frame)
       @frames << tenth_frame
     else
       @frames << base_frame
     end
   end
   
+  def generate_bonus(base_frame)
+      first_bonus  = Frame.new(@player.roll)
+      second_bonus = Frame.new(@player.roll)
+      source_rolls = [base_frame.results, first_bonus.results, second_bonus.results]
+      three_rolls  = source_rolls.flatten.shift(3)
+      Frame.new(three_rolls)
+  end
+    
   def current_frame
     @frames.length
   end
@@ -136,7 +140,7 @@ class PlayerGame
   
   def score_turn
     active_frames = (current_frame <= 3)  ?  @frames  :  @frames[-3..-1]
-    window = ScoringWindow.new( active_frames, last_known_score )
+    window = ScoringWindow.new(active_frames, last_known_score)
     @scores     <<  window.return_scores[-1]
     @scores[-2] ||= window.return_scores[-2] if window.return_scores.length >= 2
     @scores[-3] ||= window.return_scores[-3] if window.return_scores.length == 3
@@ -144,12 +148,12 @@ class PlayerGame
 end
 
 
-# This class completes open bonuses and scores or defers current frame
+# This class completes open bonuses and scores or defers current frame.
 #       data: recent frames and most recent subtotal
 #       behavior: generates array of up to three subtotals and/or nil entries
 class ScoringWindow
   attr_reader :return_scores
-  def initialize( frames, base_score )
+  def initialize(frames, base_score)
     raise RangeError unless base_score >= 0
     @frames = frames
     @base_score = base_score
@@ -158,6 +162,11 @@ class ScoringWindow
   end
 
   private
+    
+  def update_score(amount)
+    @base_score += amount
+    @return_scores << @base_score
+  end
   
   def two_prev
     @frames[-3]
@@ -177,18 +186,18 @@ class ScoringWindow
     
   def calculate_scores
     update_two_prev
-    tenth_bonus?  ?  ( update_ninth_before_bonus; score_tenth_bonus )
-                  :  ( update_one_prev; score_current )
+    if tenth_bonus?
+      update_ninth_before_bonus
+      score_tenth_bonus
+    else
+      update_one_prev
+      score_current
+    end  
   end
-      
-  def update_score(amount)
-    @base_score += amount
-    @return_scores << @base_score
-  end
-  
+    
   def update_two_prev
     return if two_prev.nil?
-    return unless ( two_prev.strike? && one_prev.strike? )
+    return unless (two_prev.strike? && one_prev.strike?)
     frame_rolls = @frames.map { |fr| fr.results }    
     flat_rolls = frame_rolls.flatten
     bonus = flat_rolls[1] + flat_rolls[2]
@@ -197,8 +206,8 @@ class ScoringWindow
       
   def update_one_prev
     return if one_prev.nil?
-    return unless ( one_prev.strike? || one_prev.spare? )
-    if ( one_prev.strike? && current.strike? )
+    return unless (one_prev.strike? || one_prev.spare?)
+    if (one_prev.strike? && current.strike?)
       @return_scores << nil
     else
       bonus = one_prev.strike?  ?  current.total  :  current.first_roll
@@ -215,7 +224,7 @@ class ScoringWindow
   end
   
   def update_ninth_before_bonus
-    return unless ( one_prev.strike? || one_prev.spare? )
+    return unless (one_prev.strike? || one_prev.spare?)
     bonus = one_prev.strike?  ? (current.first_roll + current.second_roll)  
                               :  current.first_roll
     update_score(10 + bonus)
@@ -227,9 +236,9 @@ class ScoringWindow
 end
 
 
-# This class creates a single match and directs player(s) to bowl in sequence
-#  data: set of players, PlayerGames
-#  behavior: directs and prints turns, identifies winner
+# This class creates a single match and directs player(s) to bowl in sequence.
+#       data: set of players, PlayerGames
+#       behavior: directs and prints turns, identifies winner
 class Game
   attr_reader :players, :player_games # :winner 
   def initialize(players, turn_recorder)
@@ -256,7 +265,6 @@ class Game
 end
 
 
-
 class TurnRecorder
   attr_reader :turns
   def initialize(players)
@@ -267,20 +275,12 @@ class TurnRecorder
   def record(player_games)
     game_turn = []
     @players.each_index do |i|
-      # puts "no. players: #{@players.length}"
-      # puts "line #{__LINE__} - player #{i + 1}"
-      # player_turn = []
-      # rec_player = i
-      # rec_skill = @players[i].skill
       rec_scores = player_games[i].scores_posted
       rec_frames = player_games[i].frames_played
-      # puts "frames: #{rec_frames.inspect}", "scores: #{rec_scores.inspect}"  #, "flat scores: #{rec_scores.flatten.inspect}"
       player_turn = [rec_scores, rec_frames]
-      # puts "line #{__LINE__} - complete player turn:\n#{player_turn.inspect}"
       game_turn << player_turn
     end
     @turns << game_turn
-    # puts "line #{__LINE__} - turns array:\n#{@turns.inspect}"
   end
   
   def print_game_state(turn)
@@ -299,6 +299,8 @@ class TurnRecorder
     puts
   end
   
+  # This prints complete game-to-date as of each turn,
+  #   modeling output as needed by display at alley.
   def format_output(turn)
     current_turn = @turns[turn]
     (0..turn).each do |fr|
@@ -319,7 +321,7 @@ end
 # ===========================================================================
 # Following two methods handle user input and screen output
 
-# Sets players and skill levels
+# Sets players and skill levels.
 def input_player_settings
   print "\n\nHow many players(1-4)?  "
     numplayers = gets.chomp.to_i
@@ -337,12 +339,11 @@ def input_player_settings
 end
 
 
-# Creates new game 
+# Creates new game. 
 def single_game
   input_player_settings
   turn_recorder = TurnRecorder.new(@input_players)
   game = Game.new(@input_players, turn_recorder)
-  puts "\n ---- GAME OUTPUT ----\n"
   (0..9).each { |i| turn_recorder.print_game_state(i) }
   puts
 end
@@ -372,7 +373,7 @@ class TestPlayer < Test::Unit::TestCase
 end
 
 
-# Frame only knows that the object passed to it responds to results
+# Frame only knows that the object passed to it responds to :results.
 class TestFrame < Test::Unit::TestCase
   def test_first_roll
     frame = Frame.new [3,4]
@@ -406,9 +407,9 @@ class TestFrame < Test::Unit::TestCase
 end
 
 
-# seems tough to test - game logic is here, with non-deterministic results,
-#   and all classes except Game 
-# since overall program is small, creating actual objects instead of mocks
+# Seems tough to test - game logic is here, with non-deterministic results,
+#   and requires contact with all classes except Game.
+# Since overall program is small, creating actual objects instead of mocks.
 class TestPlayerGame < Test::Unit::TestCase
   def test_take_turn_appends_to_frames_array
     playergame = PlayerGame.new(Player.new)
@@ -433,73 +434,72 @@ end
 
 class TestScoringWindow < Test::Unit::TestCase
   def setup
-    @open_frame = Frame.new( [3, 4] )
-    @strike = Frame.new( [10] )
-    @spare = Frame.new( [2,8] )
-    @bonus_tenth = Frame.new( [8, 2, 10] )
+    @open_frame = Frame.new([3, 4])
+    @strike = Frame.new([10])
+    @spare = Frame.new([2,8])
+    @bonus_tenth = Frame.new([8, 2, 10])
+    @perfect_tenth = Frame.new([10, 10, 10])
   end
   
   def test_open_frames_return_newest_only
-    window = ScoringWindow.new( [@open_frame, @open_frame, @open_frame], 14 )
+    window = ScoringWindow.new([@open_frame, @open_frame, @open_frame], 14)
     assert window.return_scores == [21]
   end
   
   def test_spare_frames_return_one_update_plus_nil
-    window = ScoringWindow.new( [@spare, @spare, @spare], 12 )
+    window = ScoringWindow.new([@spare, @spare, @spare], 12)
     assert window.return_scores.length == 2
     assert window.return_scores == [24, nil]
   end
   
   def test_strike_frames_return_one_update_plus_two_nils
-    window = ScoringWindow.new( [@strike, @strike, @strike], 0 )
+    window = ScoringWindow.new([@strike, @strike, @strike], 0)
     assert window.return_scores == [30, nil, nil]
   end
   
   def test_strikes_then_open_return_two_updates_plus_newest
-    window = ScoringWindow.new( [@strike, @strike, @open_frame], 0 )
+    window = ScoringWindow.new([@strike, @strike, @open_frame], 0)
     assert window.return_scores == [23, 40, 47]
   end
     
   def test_bonus_tenth_scored_correctly
-    window = ScoringWindow.new( [@strike, @strike, @bonus_tenth], 0 )
+    window = ScoringWindow.new([@strike, @strike, @bonus_tenth], 0)
     assert window.return_scores == [28, 48, 68]
+  end
+  
+  def test_perfect_game_ends_correctly
+    window = ScoringWindow.new([@strike, @strike, @perfect_tenth], 210)
+    assert window.return_scores == [240, 270, 300]
   end
 end
 
 
-# GameTurn uses only one interface (take_turn), but it's a command
-#   -- the data in each Player changes when it gets that message
-# as above w/ PG: testing w/ actual objects instead of mocks because overall program is small
-# class TestGame < Test::Unit::TestCase
-  # def setup
-    # @singleplayer = [Player.new]
-    # @multiplayer = [Player.new, Player.new, Player.new, Player.new]
-    # @turn_rec_single = TurnRecorder.new( @singleplayer )
-    # @turn_rec_mult = TurnRecorder.new( @multiplayer )
-  # end
+# GameTurn uses only one interface (take_turn), but it's a command;
+#   the data in each Player changes when it gets that message.
+# As above, testing w/ actual objects vs. mocks b/c overall program is small.
+class TestGame < Test::Unit::TestCase
+  def setup
+    @singleplayer = [Player.new]
+    @multiplayer = [Player.new, Player.new, Player.new, Player.new]
+    @turn_rec_single = TurnRecorder.new(@singleplayer)
+    @turn_rec_mult = TurnRecorder.new(@multiplayer)
+  end
 
-  # def test_single_game_generates_ten_frames
-    # game = Game.new( @singleplayer, @turn_rec_single )
-      # # puts "\nsingle >> #{game.player_games.inspect}"
-      # # puts "\n << #{game.player_games.length} >>"
-    # assert game.player_games.length == 1
-      # # puts game.player_games[0].frames_played.inspect
-    # assert game.player_games[0].frames_played.length == 10    
-  # end
+  def test_single_game_generates_ten_frames
+    game = Game.new(@singleplayer, @turn_rec_single)
+    assert game.player_games.length == 1
+    assert game.player_games[0].frames_played.length == 10    
+  end
   
-  # def test_single_game_generates_valid_score
-    # game = Game.new( @singleplayer, @turn_rec_single )
-    # total = game.player_games[0].scores[-1]
-    # assert total.between? 0, 300    
-  # end
+  def test_single_game_generates_valid_score
+    game = Game.new(@singleplayer, @turn_rec_single)
+    total = game.player_games[0].scores[-1]
+    assert total.between? 0, 300    
+  end
   
-  # def test_multplr_game
-    # mpl_game = Game.new( @multiplayer, @turn_rec_mult )
-      # # puts "\nmult >> #{mpl_game.player_games.inspect}"
-      # # puts "\n << #{mpl_game.player_games.length} >>"
-    # assert mpl_game.player_games.length == 4
-      # # puts "\nmult >>> #{mpl_game.player_games[0].frames_played.inspect}"
-      # # puts "\n << #{mpl_game.player_games[3].frames_played.length} >>"
-    # assert mpl_game.player_games[3].frames_played.length == 10 
-  # end  
-# end
+  def test_multplr_game
+    mpl_game = Game.new(@multiplayer, @turn_rec_mult)
+    assert mpl_game.player_games.length == 4
+    assert mpl_game.player_games[3].frames_played.length == 10 
+  end  
+end
